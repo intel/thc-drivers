@@ -1,0 +1,91 @@
+From 4e51dbecda8f8ad5c551db6b3afc74cccb4f3ff9 Mon Sep 17 00:00:00 2001
+From: Even Xu <even.xu@intel.com>
+Date: Mon, 21 Oct 2024 15:07:34 +0800
+Subject: [PATCH] THAT Workaround patch
+
+Signed-off-by: Even Xu <even.xu@intel.com>
+---
+ .../intel-quicki2c/pci-quicki2c.c             | 11 +++++---
+ .../intel-quicki2c/quicki2c-protocol.c        | 25 ++++++++++++++++++-
+ 2 files changed, 31 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/hid/intel-thc-hid/intel-quicki2c/pci-quicki2c.c b/drivers/hid/intel-thc-hid/intel-quicki2c/pci-quicki2c.c
+index 3e27fce0ec8a..9c316fd20ebe 100644
+--- a/drivers/hid/intel-thc-hid/intel-quicki2c/pci-quicki2c.c
++++ b/drivers/hid/intel-thc-hid/intel-quicki2c/pci-quicki2c.c
+@@ -616,21 +616,19 @@ static int quicki2c_probe(struct pci_dev *pdev,
+ 		goto dev_deinit;
+ 	}
+ 
+-	ret = thc_interrupt_quiesce(qcdev->thc_hw, false);
+-	if (ret)
+-		goto dev_deinit;
+-
+ 	ret = quicki2c_set_power(qcdev, HIDI2C_ON);
+ 	if (ret) {
+ 		dev_err(&pdev->dev, "Set Power On command failed, ret= %d\n", ret);
+ 		goto dev_deinit;
+ 	}
+ 
++#if 0
+ 	ret = quicki2c_reset(qcdev);
+ 	if (ret) {
+ 		dev_err(&pdev->dev, "Reset HIDI2C device failed, ret= %d\n", ret);
+ 		goto dev_deinit;
+ 	}
++#endif
+ 
+ 	ret = quicki2c_get_report_descriptor(qcdev);
+ 	if (ret) {
+@@ -638,6 +636,11 @@ static int quicki2c_probe(struct pci_dev *pdev,
+ 		goto dma_deinit;
+ 	}
+ 
++	ret = thc_interrupt_quiesce(qcdev->thc_hw, false);
++	if (ret)
++		goto dma_deinit;
++
++
+ 	ret = quicki2c_hid_probe(qcdev);
+ 	if (ret) {
+ 		dev_err(&pdev->dev, "Failed to register HID device, ret = %d\n", ret);
+diff --git a/drivers/hid/intel-thc-hid/intel-quicki2c/quicki2c-protocol.c b/drivers/hid/intel-thc-hid/intel-quicki2c/quicki2c-protocol.c
+index 4118d8ef9c9f..7288d5f7dd96 100644
+--- a/drivers/hid/intel-thc-hid/intel-quicki2c/quicki2c-protocol.c
++++ b/drivers/hid/intel-thc-hid/intel-quicki2c/quicki2c-protocol.c
+@@ -114,8 +114,31 @@ int quicki2c_get_report_descriptor(struct quicki2c_device *qcdev)
+ 	size_t read_len = le16_to_cpu(qcdev->dev_desc.report_desc_len);
+ 	u32 prd_len = read_len;
+ 
+-	return thc_swdma_read(qcdev->thc_hw, (u8 *)&desc_reg, HIDI2C_REG_LEN,
++	thc_swdma_read(qcdev->thc_hw, (u8 *)&desc_reg, HIDI2C_REG_LEN,
+ 			      &prd_len, qcdev->report_descriptor, &read_len);
++
++	desc_reg = le16_to_cpu(qcdev->dev_desc.input_reg);
++	read_len = le16_to_cpu(qcdev->dev_desc.max_input_len);
++	prd_len = read_len;
++
++	thc_tic_pio_read(qcdev->thc_hw, desc_reg, read_len, &prd_len, (u32 *)qcdev->input_buf);
++	dev_err(qcdev->dev, "read 0x%x, len %d\n", *(u32 *)qcdev->input_buf, prd_len);
++	thc_tic_pio_read(qcdev->thc_hw, desc_reg, read_len, &prd_len, (u32 *)qcdev->input_buf);
++	dev_err(qcdev->dev, "read 0x%x, len %d\n", *(u32 *)qcdev->input_buf, prd_len);
++	thc_tic_pio_read(qcdev->thc_hw, desc_reg, read_len, &prd_len, (u32 *)qcdev->input_buf);
++	dev_err(qcdev->dev, "read 0x%x, len %d\n", *(u32 *)qcdev->input_buf, prd_len);
++	thc_tic_pio_read(qcdev->thc_hw, desc_reg, read_len, &prd_len, (u32 *)qcdev->input_buf);
++	dev_err(qcdev->dev, "read 0x%x, len %d\n", *(u32 *)qcdev->input_buf, prd_len);
++	thc_tic_pio_read(qcdev->thc_hw, desc_reg, read_len, &prd_len, (u32 *)qcdev->input_buf);
++	dev_err(qcdev->dev, "read 0x%x, len %d\n", *(u32 *)qcdev->input_buf, prd_len);
++	thc_tic_pio_read(qcdev->thc_hw, desc_reg, read_len, &prd_len, (u32 *)qcdev->input_buf);
++	dev_err(qcdev->dev, "read 0x%x, len %d\n", *(u32 *)qcdev->input_buf, prd_len);
++	thc_tic_pio_read(qcdev->thc_hw, desc_reg, read_len, &prd_len, (u32 *)qcdev->input_buf);
++	dev_err(qcdev->dev, "read 0x%x, len %d\n", *(u32 *)qcdev->input_buf, prd_len);
++	thc_tic_pio_read(qcdev->thc_hw, desc_reg, read_len, &prd_len, (u32 *)qcdev->input_buf);
++	dev_err(qcdev->dev, "read 0x%x, len %d\n", *(u32 *)qcdev->input_buf, prd_len);
++
++	return 0;
+ }
+ 
+ int quicki2c_get_report(struct quicki2c_device *qcdev, u8 report_type,
+-- 
+2.40.1
+
