@@ -1,25 +1,25 @@
-# Touch Host Controller (THC) Linxu Drivers
+# Touch Host Controller (THC) Linux Drivers
 
 Intel Touch Host Controller (THC) is a new high performance input IP which can benefit HID device's data transaction, such as touch screen, touch pad, stylus.
 
 THC IP now evoluates to V4, it can support 3 different modes: IPTS, HIDSPI and HIDI2C. Here are upgrade history:
-- THC v1, for TGL/LKF, supports intel private IPTS (Intel Precise Touch and Stylus) protocol ( IPTS mode)
-- THC v2, for ADL, add industrial standard HID over SPI protocol support (HIDSPI mode)
-- THC v3, for MTL, enhance HID over SPI mode
-- THC v4, for LNL, add inudstrial standard HID over I2C protocol support (HIDI2C mode) 
+- THC v1, for TGL/LKF, supports Intel private IPTS (Intel Precise Touch and Stylus) protocol ( IPTS mode)
+- THC v2, for ADL, adds industrial standard HID over SPI protocol support (HIDSPI mode)
+- THC v3, for MTL, enhances HID over SPI mode
+- THC v4, for LNL, adds inudstrial standard HID over I2C protocol support (HIDI2C mode) 
 
-Linux Surface community (https://github.com/linux-surface) already implemented IPTS mode. These patch series provides THC HIDSPI mode and THC HIDI2C mode support on Linux.
-
-These patch series includes:
+These repo provides THC HIDSPI mode and THC HIDI2C mode support on Linux, includes:
 - Document for THC hardware and software introduction.
 - Intel THC Hardware layer driver which provides control interfaces for protocol layer.
 - Intel QuickSPI (R) driver working as a HIDSPI device driver which implements HID over SPI protocol and flow.
 - Intel QuickI2C (R) driver working as a HIDI2C device driver which implements HID over I2C protocol and flow.
 
+Linux Surface community (https://github.com/linux-surface) implements IPTS mode, you can find IPTS mode driver there.
+
 ## Content of this repository:
-- driver_source_code: THC drivers source code
-- pathes: patches
-- Documents: documents for THC IP and THC drivers
+- driver_source_code: THC drivers source code.
+- patches: patches for special use case.
+- Documents: documents for THC IP and THC drivers.
 
 ## Dependencies:
 - BIOS: THC must be enabled in BIOS, and ACPI parameters are correctly configured.
