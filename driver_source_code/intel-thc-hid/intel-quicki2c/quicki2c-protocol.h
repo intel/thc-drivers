@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0 */
-/* Copyright 2024 Intel Corporation */
+/* Copyright (c) 2024 Intel Corporation */
 
 #ifndef _QUICKI2C_PROTOCOL_H_
 #define _QUICKI2C_PROTOCOL_H_

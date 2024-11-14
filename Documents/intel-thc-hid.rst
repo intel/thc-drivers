@@ -30,37 +30,39 @@ signals directly.
 Below diagram illustrates the high-level architecture of THC software/hardware stack, which is fully
 capable of supporting HIDSPI/HIDI2C protocol in Linux OS.
 
- ----------------------------------------------
-|      +-----------------------------------+   |
-|      |           Input Device            |   |
-|      +-----------------------------------+   |
-|      +-----------------------------------+   |
-|      |       HID Multi-touch Driver      |   |
-|      +-----------------------------------+   |
-|      +-----------------------------------+   |
-|      |             HID Core              |   |
-|      +-----------------------------------+   |
-|      +-----------------------------------+   |
-|      |    THC QuickSPI/QuickI2C Driver   |   |
-|      +-----------------------------------+   |
-|      +-----------------------------------+   |
-|      |      THC Hardware Driver          |   |
-|      +-----------------------------------+   |
-|      +----------------+ +----------------+   |
-|  SW  | PCI Bus Driver | | ACPI Resource  |   |
-|      +----------------+ +----------------+   |
- ----------------------------------------------
- ----------------------------------------------
-|      +-----------------------------------+   |
-|  HW  |              PCI Bus              |   |
-|      +-----------------------------------+   |
-|      +-----------------------------------+   |
-|      |           THC Controller          |   |
-|      +-----------------------------------+   |
-|      +-----------------------------------+   |
-|      |              Touch IC             |   |
-|      +-----------------------------------+   |
- ----------------------------------------------
+::
+
+  ----------------------------------------------
+ |      +-----------------------------------+   |
+ |      |           Input Device            |   |
+ |      +-----------------------------------+   |
+ |      +-----------------------------------+   |
+ |      |       HID Multi-touch Driver      |   |
+ |      +-----------------------------------+   |
+ |      +-----------------------------------+   |
+ |      |             HID Core              |   |
+ |      +-----------------------------------+   |
+ |      +-----------------------------------+   |
+ |      |    THC QuickSPI/QuickI2C Driver   |   |
+ |      +-----------------------------------+   |
+ |      +-----------------------------------+   |
+ |      |      THC Hardware Driver          |   |
+ |      +-----------------------------------+   |
+ |      +----------------+ +----------------+   |
+ |  SW  | PCI Bus Driver | | ACPI Resource  |   |
+ |      +----------------+ +----------------+   |
+  ----------------------------------------------
+  ----------------------------------------------
+ |      +-----------------------------------+   |
+ |  HW  |              PCI Bus              |   |
+ |      +-----------------------------------+   |
+ |      +-----------------------------------+   |
+ |      |           THC Controller          |   |
+ |      +-----------------------------------+   |
+ |      +-----------------------------------+   |
+ |      |              Touch IC             |   |
+ |      +-----------------------------------+   |
+  ----------------------------------------------
 
 Touch IC (TIC), also as known as the Touch devices (touchscreen or touchpad). The discrete analog
 components that sense and transfer either discrete touch data or heatmap data in the form of HID
@@ -78,7 +80,7 @@ low-level driver that manages the THC Controller and implements HIDSPI/HIDI2C pr
 
 1.2 THC hardware diagram
 ------------------------
-Below diagram shows THC hardware components:
+Below diagram shows THC hardware components::
 
                       ---------------------------------
                      |          THC Controller         |
@@ -156,13 +158,15 @@ setting different opcode.
 Beside IO mode, driver also needs to configure SPI bus speed. THC supports up to 42MHz SPI clock
 on Intel Lunar Lake platform.
 
-For THC sending data to Touch IC, the data flow on SPI bus:
-| --------------------THC sends---------------------------------|
-<8Bits OPCode><24Bits Slave Address><Data><Data><Data>...........
+For THC sending data to Touch IC, the data flow on SPI bus::
 
-For THC receiving data from Touch IC, the data flow on SPI bus:
-| ---------THC Sends---------------||-----Touch IC sends--------|
-<8Bits OPCode><24Bits Slave Address><Data><Data><Data>...........
+ | --------------------THC sends---------------------------------|
+ <8Bits OPCode><24Bits Slave Address><Data><Data><Data>...........
+
+For THC receiving data from Touch IC, the data flow on SPI bus::
+
+ | ---------THC Sends---------------||-----Touch IC sends--------|
+ <8Bits OPCode><24Bits Slave Address><Data><Data><Data>...........
 
 2.2.2 I2C Port
 ~~~~~~~~~~~~~~
@@ -193,24 +197,23 @@ Opcode (operation code) is used to tell THC or Touch IC what the operation will 
 read or PIO write.
 
 When THC is configured to SPI mode, opcodes are used for determining the read/write IO mode.
-There are some OPCode examples for SPI IO mode:
- ------------------------------------------
-|     example of SPI PIO opcode            |
- ------------------------------------------
-| opcode |  Corresponding SPI command      |
- ------------------------------------------
-|  0x0B  | Read Single I/O                 |
- ------------------------------------------
-|  0x02  | Write Single I/O                |
- ------------------------------------------
-|  0xBB  | Read Dual I/O                   |
- ------------------------------------------
-|  0xB2  | Write Dual I/O                  |
- ------------------------------------------
-|  0xEB  | Read Quad I/O                   |
- ------------------------------------------
-|  0xE2  | Write Quad I/O                  |
- ------------------------------------------
+There are some OPCode examples for SPI IO mode::
+
+ +--------+---------------------------------+
+ | opcode |  Corresponding SPI command      |
+ +========+=================================+
+ |  0x0B  | Read Single I/O                 |
+ +--------+---------------------------------+
+ |  0x02  | Write Single I/O                |
+ +--------+---------------------------------+
+ |  0xBB  | Read Dual I/O                   |
+ +--------+---------------------------------+
+ |  0xB2  | Write Dual I/O                  |
+ +--------+---------------------------------+
+ |  0xEB  | Read Quad I/O                   |
+ +--------+---------------------------------+
+ |  0xE2  | Write Quad I/O                  |
+ +--------+---------------------------------+
 
 In general, different touch IC has different OPCode definition. According to HIDSPI
 protocol whitepaper, those OPCodes are defined in device ACPI table, and driver needs to
@@ -221,24 +224,22 @@ When THC is working in I2C mode, opcodes are used to tell THC what's the next PI
 I2C SubIP APB register read, I2C SubIP APB register write, I2C touch IC device read,
 I2C touch IC device write, I2C touch IC device write followed by read.
 
-Here are the THC pre-defined opcodes for I2C mode:
+Here are the THC pre-defined opcodes for I2C mode::
 
- ---------------------------------------------------------------
-|                   THC I2C PIO OPCode                          |
- ---------------------------------------------------------------
-| opcode |       Corresponding I2C command           | Address  |
- ---------------------------------------------------------------
-|  0x12  | Read I2C SubIP APB internal registers     | 0h - FFh |
- ---------------------------------------------------------------
-|  0x13  | Write I2C SubIP APB internal registers    | 0h - FFh |
- ---------------------------------------------------------------
-|  0x14  | Read external Touch IC through I2C bus    | N/A      |
- ---------------------------------------------------------------
-|  0x18  | Write external Touch IC through I2C bus   | N/A      |
- ---------------------------------------------------------------
-|  0x1C  | Write then read external Touch IC through | N/A      |
-|        | I2C bus                                   |          |
- ---------------------------------------------------------------
+ +--------+-------------------------------------------+----------+
+ | opcode |       Corresponding I2C command           | Address  |
+ +========+===========================================+==========+
+ |  0x12  | Read I2C SubIP APB internal registers     | 0h - FFh |
+ +--------+-------------------------------------------+----------+
+ |  0x13  | Write I2C SubIP APB internal registers    | 0h - FFh |
+ +--------+-------------------------------------------+----------+
+ |  0x14  | Read external Touch IC through I2C bus    | N/A      |
+ +--------+-------------------------------------------+----------+
+ |  0x18  | Write external Touch IC through I2C bus   | N/A      |
+ +--------+-------------------------------------------+----------+
+ |  0x1C  | Write then read external Touch IC through | N/A      |
+ |        | I2C bus                                   |          |
+ +--------+-------------------------------------------+----------+
 
 3.2 PIO
 -------
@@ -266,13 +267,14 @@ RESET response (PIO read or PIO write followed by read), write Power ON command 
 device descriptor (PIO read).
 
 For how to issue a PIO operation, here is the steps which driver needs follow:
--- Program read/write data size in THC_SS_BC.
--- Program I/O target address in THC_SW_SEQ_DATA0_ADDR.
--- If write, program the write data in THC_SW_SEQ_DATA0..THC_SW_SEQ_DATAn.
--- Program the PIO opcode in THC_SS_CMD.
--- Set TSSGO = 1 to start the PIO write sequence.
--- If THC_SS_CD_IE = 1, SW will receives a MSI when the PIO is completed.
--- If read, read out the data in THC_SW_SEQ_DATA0..THC_SW_SEQ_DATAn.
+
+- Program read/write data size in THC_SS_BC.
+- Program I/O target address in THC_SW_SEQ_DATA0_ADDR.
+- If write, program the write data in THC_SW_SEQ_DATA0..THC_SW_SEQ_DATAn.
+- Program the PIO opcode in THC_SS_CMD.
+- Set TSSGO = 1 to start the PIO write sequence.
+- If THC_SS_CD_IE = 1, SW will receives a MSI when the PIO is completed.
+- If read, read out the data in THC_SW_SEQ_DATA0..THC_SW_SEQ_DATAn.
 
 3.3 DMA
 -------
@@ -346,15 +348,17 @@ provide SGL (scatter gather list) APIs to support this usage.
 THC uses PRD table (physical region descriptor) to support the corresponding OS kernel
 SGL that describes the virtual to physical buffer mapping.
 
- ------------------------      --------------       --------------
-| PRD table base address +----+ PRD table #1 +-----+ PRD Entry #1 |
- ------------------------      --------------       --------------
-                                                    --------------
-                                                   | PRD Entry #2 |
-                                                    --------------
-                                                    --------------
-                                                   | PRD Entry #n |
-                                                    --------------
+::
+
+  ------------------------      --------------       --------------
+ | PRD table base address +----+ PRD table #1 +-----+ PRD Entry #1 |
+  ------------------------      --------------       --------------
+                                                     --------------
+                                                    | PRD Entry #2 |
+                                                     --------------
+                                                     --------------
+                                                    | PRD Entry #n |
+                                                     --------------
 
 The read DMA engine supports multiple PRD tables held within a circular buffer that allow the THC
 to support multiple data buffers from the Touch IC. This allows host SW to arm the Read DMA engine
@@ -401,25 +405,37 @@ required to honor this behavior): 00h 01h 02h 03h 04h 80h 81h 82h 83h 84h 00h 01
 Intel THC uses PRD entry descriptor for every PRD entry. Every PRD entry descriptor occupies
 128 bits memories::
 
-    dest_addr Bits 53..0   : destination memory address, as every entry is 4KB,
-                             ignore lowest 10 bits of address.
-    reserved1 Bits 54..62  : reserved
-    int_on_completion Bit 63 : completion interrupt enable bit, if this bit set
-                               it means THC will trigger a completion interrupt.
-                               This bit is set by SW driver.
-    len Bits 87..64 : how many bytes of data in this entry.
-    end_of_prd Bit 88: end of PRD table bit, if this bit is set, it
-                       means this entry is last entry in this PRD table.
-                       This bit is set by SW driver.
-    hw_status Bits 90..89 : HW status bits
-    reserved2 Bits 127..91 : reserved
+ +-------------------+---------+------------------------------------------------+
+ | struct field      | bit(s)  | description                                    |
+ +===================+=========+================================================+
+ | dest_addr         | 53..0   | destination memory address, as every entry     |
+ |                   |         | is 4KB, ignore lowest 10 bits of address.      |
+ +-------------------+---------+------------------------------------------------+
+ | reserved1         | 54..62  | reserved                                       |
+ +-------------------+---------+------------------------------------------------+
+ | int_on_completion | 63      | completion interrupt enable bit, if this bit   |
+ |                   |         | set it means THC will trigger a completion     |
+ |                   |         | interrupt. This bit is set by SW driver.       |
+ +-------------------+---------+------------------------------------------------+
+ | len               | 87..64  | how many bytes of data in this entry.          |
+ +-------------------+---------+------------------------------------------------+
+ | end_of_prd        | 88      | end of PRD table bit, if this bit is set,      |
+ |                   |         | it means this entry is last entry in this PRD  |
+ |                   |         | table. This bit is set by SW driver.           |
+ +-------------------+---------+------------------------------------------------+
+ | hw_status         | 90..89  | HW status bits                                 |
+ +-------------------+---------+------------------------------------------------+
+ | reserved2         | 127..91 | reserved                                       |
+ +-------------------+---------+------------------------------------------------+
 
 And one PRD table can include up to 256 PRD entries, as every entries is 4K bytes, so every
 PRD table can describe 1M bytes memory.
 
-struct thc_prd_table {
-	struct thc_prd_entry entries[PRD_ENTRIES_NUM];
-};
+.. code-block:: c
+
+   struct thc_prd_table {
+        struct thc_prd_entry entries[PRD_ENTRIES_NUM];
+   };
 
 In general, every PRD table means one HID touch data packet. Every DMA engine can support
 up to 128 PRD tables (except write DMA, write DMA only has one PRD table). SW driver is responsible
@@ -440,11 +456,13 @@ protocol transferring.
 - Issue a command to retrieve device descriptor from Touch IC through PIO write.
 - Read the device descriptor from Touch IC through PIO read.
 - If the device descriptor is valid, allocate DMA buffers and configure all DMA channels.
+- Issue a command to retrieve report descriptor from Touch IC through DMA.
 
 4.2 Input Report Data Flow
 --------------------------
 
 Basic Flow:
+
 - Touch IC interrupts the THC Controller using an in-band THC interrupt.
 - THC Sequencer reads the input report header by transmitting read approval as a signal
   to the Touch IC to prepare for host to read from the device.
@@ -459,12 +477,14 @@ Basic Flow:
 - If the “Last Fragment Flag” bit is enabled the THC Sequencer enters End-of-Frame Processing.
 
 THC Sequencer End of Frame Processing:
+
 - THC DMA engine increments the read pointer of the Read PRD CB, sets EOF interrupt status
   in RxDMA2 register (THC_M_PRT_READ_DMA_INT_STS_2).
 - If THC EOF interrupt is enabled by the driver in the control register (THC_M_PRT_READ_DMA_CNTRL_2),
   generates interrupt to software.
 
 Sequence of steps to read data from RX DMA buffer:
+
 - THC QuickSPI driver checks CB write Ptr and CB read Ptr to identify if any data frame in DMA
   circular buffers.
 - THC QuickSPI driver gets first unprocessed PRD table.
@@ -478,6 +498,7 @@ Sequence of steps to read data from RX DMA buffer:
 ---------------------------
 
 Generic Output Report Flow:
+
 - HID core calls hid_request or hid_output_report callback with a request to THC QuickSPI driver.
   hid_request is used for set/get feature report, and hid_output_request for output report.
 - THC QuickSPI Driver converts request provided data into the output report packet and copies it
@@ -490,19 +511,19 @@ Generic Output Report Flow:
 5.1 Reset Flow
 --------------
 
-- Call ACPI _RST method to reset Touch IC device (HW reset).
-- Read the reset response from Touch IC through PIO read.
-- Read the device descriptor from Touch IC through PIO write followed by read.
+- Read device descriptor from Touch IC device through PIO write followed by read.
 - If the device descriptor is valid, allocate DMA buffers and configure all DMA channels.
 - Use PIO or TxDMA to write a SET_POWER request to TIC's command register, and check if the
   write operation is successfully completed.
 - Use PIO or TxDMA to write a RESET request to TIC's command register. If the write operation
-  is successfully completed, wait for reset response from TIC (SW reset).
+  is successfully completed, wait for reset response from TIC.
+- Use SWDMA to read report descriptor through TIC's report descriptor register.
 
 5.2 Input Report Data Flow
 --------------------------
 
 Basic Flow:
+
 - Touch IC asserts the interrupt indicating that it has an interrupt to send to HOST.
   THC Sequencer issues a READ request over the I2C bus. The HIDI2C device returns the
   first 2 bytes from the HIDI2C device which contains the length of the received data.
@@ -519,12 +540,14 @@ Basic Flow:
   steps 1 through 4 in the flow are repeated.
 
 THC Sequencer End of Input Report Processing:
+
 - THC DMA engine increments the read pointer of the Read PRD CB, sets EOF interrupt status
   in RxDMA 2 register (THC_M_PRT_READ_DMA_INT_STS_2).
 - If THC EOF interrupt is enabled by the driver in the control register
   (THC_M_PRT_READ_DMA_CNTRL_2), generates interrupt to software.
 
 Sequence of steps to read data from RX DMA buffer:
+
 - THC QuickI2C driver checks CB write Ptr and CB read Ptr to identify if any data frame in DMA
   circular buffers.
 - THC QuickI2C driver gets first unprocessed PRD table.
@@ -539,6 +562,7 @@ Sequence of steps to read data from RX DMA buffer:
 ---------------------------
 
 Generic Output Report Flow:
+
 - HID core call THC QuickI2C thc_hidi2c_hid_output_report callback.
 - THC QuickI2C uses PIO or TXDMA to write a SET_REPORT request to TIC's command register. Report
   type in SET_REPORT should be set to Output.

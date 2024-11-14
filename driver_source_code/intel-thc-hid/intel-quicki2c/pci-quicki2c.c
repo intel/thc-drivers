@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (c) 2024 Intel Corporation */
 
 #include <linux/acpi.h>
@@ -186,8 +186,9 @@ static int quicki2c_get_acpi_resources(struct quicki2c_device *qcdev)
 		qcdev->i2c_speed_mode = THC_I2C_HIGH_SPEED;
 		qcdev->i2c_clock_hcnt = i2c_config.HMHX;
 		qcdev->i2c_clock_lcnt = i2c_config.HMLX;
-	} else
+	} else {
 		return -EOPNOTSUPP;
+	}
 
 	return 0;
 }
@@ -497,9 +498,8 @@ static int quicki2c_alloc_report_buf(struct quicki2c_device *qcdev)
 	if (!qcdev->input_buf)
 		return -ENOMEM;
 
-	if (!le16_to_cpu(qcdev->dev_desc.max_output_len)) {
+	if (!le16_to_cpu(qcdev->dev_desc.max_output_len))
 		qcdev->dev_desc.max_output_len = cpu_to_le16(SZ_4K);
-	}
 
 	max_report_len = max(le16_to_cpu(qcdev->dev_desc.max_output_len),
 			     max_report_len);
@@ -938,6 +938,10 @@ static const struct dev_pm_ops quicki2c_pm_ops = {
 static const struct pci_device_id quicki2c_pci_tbl[] = {
 	{PCI_VDEVICE(INTEL, THC_LNL_DEVICE_ID_I2C_PORT1), },
 	{PCI_VDEVICE(INTEL, THC_LNL_DEVICE_ID_I2C_PORT2), },
+	{PCI_VDEVICE(INTEL, THC_PTL_H_DEVICE_ID_I2C_PORT1), },
+	{PCI_VDEVICE(INTEL, THC_PTL_H_DEVICE_ID_I2C_PORT2), },
+	{PCI_VDEVICE(INTEL, THC_PTL_U_DEVICE_ID_I2C_PORT1), },
+	{PCI_VDEVICE(INTEL, THC_PTL_U_DEVICE_ID_I2C_PORT2), },
 	{}
 };
 MODULE_DEVICE_TABLE(pci, quicki2c_pci_tbl);

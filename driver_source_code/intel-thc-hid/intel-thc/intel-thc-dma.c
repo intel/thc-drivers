@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: GPL-2.0
-/* Copyright 2024 Intel Corporation */
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright (c) 2024 Intel Corporation */
 
 #include <linux/bitfield.h>
 #include <linux/delay.h>
@@ -509,7 +509,7 @@ int thc_dma_configure(struct thc_device *dev)
 EXPORT_SYMBOL_NS_GPL(thc_dma_configure, INTEL_THC);
 
 /**
- * thc_dma_unconfigure - unconfigure DMA settings for all DMA engines
+ * thc_dma_unconfigure - Unconfigure DMA settings for all DMA engines
  *
  * @dev: The pointer of THC private device context
  */
@@ -657,7 +657,7 @@ static int thc_dma_read(struct thc_device *dev,
 }
 
 /**
- * thc_rxdma_read - Dead data from RXDMA buffer
+ * thc_rxdma_read - Read data from RXDMA buffer
  *
  * @dev: The pointer of THC private device context
  * @dma_channel: The RXDMA engine of read data source

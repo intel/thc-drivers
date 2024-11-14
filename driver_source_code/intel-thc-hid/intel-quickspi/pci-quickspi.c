@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (c) 2024 Intel Corporation */
 
 #include <linux/acpi.h>
@@ -23,6 +23,10 @@ struct quickspi_driver_data mtl = {
 };
 
 struct quickspi_driver_data lnl = {
+	.max_packet_size_value = MAX_PACKET_SIZE_VALUE_LNL,
+};
+
+struct quickspi_driver_data ptl = {
 	.max_packet_size_value = MAX_PACKET_SIZE_VALUE_LNL,
 };
 
@@ -354,6 +358,7 @@ static struct quickspi_device *quickspi_dev_init(struct pci_dev *pdev, void __io
 	qsdev->pdev = pdev;
 	qsdev->dev = dev;
 	qsdev->mem_addr = mem_addr;
+	qsdev->state = QUICKSPI_DISABLED;
 	qsdev->driver_data = (struct quickspi_driver_data *)id->driver_data;
 
 	init_waitqueue_head(&qsdev->reset_ack_wq);
@@ -417,6 +422,8 @@ static struct quickspi_device *quickspi_dev_init(struct pci_dev *pdev, void __io
 
 	thc_interrupt_enable(qsdev->thc_hw, true);
 
+	qsdev->state = QUICKSPI_INITED;
+
 	return qsdev;
 }
 
@@ -431,6 +438,8 @@ static void quickspi_dev_deinit(struct quickspi_device *qsdev)
 {
 	thc_interrupt_enable(qsdev->thc_hw, false);
 	thc_ltr_unconfig(qsdev->thc_hw);
+
+	qsdev->state = QUICKSPI_DISABLED;
 }
 
 /**
@@ -637,6 +646,8 @@ static int quickspi_probe(struct pci_dev *pdev,
 		dev_err(&pdev->dev, "Failed to register HID device, ret = %d\n", ret);
 		goto dma_deinit;
 	}
+
+	qsdev->state = QUICKSPI_ENABLED;
 
 	/* Enable runtime power management */
 	pm_runtime_use_autosuspend(qsdev->dev);
@@ -946,6 +957,10 @@ static const struct pci_device_id quickspi_pci_tbl[] = {
 	{PCI_DEVICE_DATA(INTEL, THC_MTL_DEVICE_ID_SPI_PORT2, &mtl), },
 	{PCI_DEVICE_DATA(INTEL, THC_LNL_DEVICE_ID_SPI_PORT1, &lnl), },
 	{PCI_DEVICE_DATA(INTEL, THC_LNL_DEVICE_ID_SPI_PORT2, &lnl), },
+	{PCI_DEVICE_DATA(INTEL, THC_PTL_H_DEVICE_ID_SPI_PORT1, &ptl), },
+	{PCI_DEVICE_DATA(INTEL, THC_PTL_H_DEVICE_ID_SPI_PORT2, &ptl), },
+	{PCI_DEVICE_DATA(INTEL, THC_PTL_U_DEVICE_ID_SPI_PORT1, &ptl), },
+	{PCI_DEVICE_DATA(INTEL, THC_PTL_U_DEVICE_ID_SPI_PORT2, &ptl), },
 	{}
 };
 MODULE_DEVICE_TABLE(pci, quickspi_pci_tbl);

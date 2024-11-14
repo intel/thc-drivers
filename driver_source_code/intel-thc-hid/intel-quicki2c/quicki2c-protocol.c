@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: GPL-2.0-only
-/* Copyright © 2024 Intel Corporation */
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* Copyright (c) 2024 Intel Corporation */
 
 #include <linux/bitfield.h>
 #include <linux/hid.h>
@@ -69,16 +69,17 @@ static int write_cmd_to_txdma(struct quicki2c_device *qcdev, int opcode,
 			      int report_type, int report_id, u8 *buf, int buf_len)
 {
 	size_t write_buf_len;
-	int cmd_len;
+	int cmd_len, ret;
 	u32 cmd;
 
 	cmd_len = quicki2c_encode_cmd(qcdev, &cmd, opcode, report_type, report_id);
 
-	write_buf_len = quicki2c_init_write_buf(qcdev, cmd, cmd_len,
-						buf ? true : false, buf, buf_len,
-						qcdev->report_buf, qcdev->report_len);
-	if (write_buf_len < 0)
-		return write_buf_len;
+	ret = quicki2c_init_write_buf(qcdev, cmd, cmd_len, buf ? true : false, buf,
+				      buf_len, qcdev->report_buf, qcdev->report_len);
+	if (ret < 0)
+		return ret;
+
+	write_buf_len = ret;
 
 	return thc_dma_write(qcdev->thc_hw, qcdev->report_buf, write_buf_len);
 }
@@ -138,11 +139,12 @@ int quicki2c_get_report(struct quicki2c_device *qcdev, u8 report_type,
 
 	cmd_len = quicki2c_encode_cmd(qcdev, &cmd, HIDI2C_GET_REPORT, rep_type, reportnum);
 
-	write_buf_len = quicki2c_init_write_buf(qcdev, cmd, cmd_len,
-						true, NULL, 0,
-						qcdev->report_buf, qcdev->report_len);
-	if (write_buf_len < 0)
-		return write_buf_len;
+	ret = quicki2c_init_write_buf(qcdev, cmd, cmd_len, true, NULL, 0,
+				      qcdev->report_buf, qcdev->report_len);
+	if (ret < 0)
+		return ret;
+
+	write_buf_len = ret;
 
 	rpt = (struct hidi2c_report_packet *)qcdev->input_buf;
 
@@ -150,13 +152,13 @@ int quicki2c_get_report(struct quicki2c_device *qcdev, u8 report_type,
 			     NULL, rpt, &read_len);
 	if (ret) {
 		dev_err_once(qcdev->dev, "Get report failed, ret %d, read len (%zu vs %d)\n",
-			ret, read_len, buf_len);
+			     ret, read_len, buf_len);
 		return ret;
 	}
 
 	if (HIDI2C_DATA_LEN(le16_to_cpu(rpt->len)) != buf_len || rpt->data[0] != reportnum) {
 		dev_err_once(qcdev->dev, "Invalid packet, len (%d vs %d) report id (%d vs %d)\n",
-			le16_to_cpu(rpt->len), buf_len, rpt->data[0], reportnum);
+			     le16_to_cpu(rpt->len), buf_len, rpt->data[0], reportnum);
 		return -EINVAL;
 	}
 

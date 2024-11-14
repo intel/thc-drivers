@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (c) 2024 Intel Corporation */
 
 #include <linux/bitfield.h>
@@ -509,32 +509,36 @@ int thc_interrupt_quiesce(const struct thc_device *dev, bool int_quiesce)
 	int ret;
 
 	regmap_read(dev->thc_regmap, THC_M_PRT_CONTROL_OFFSET, &ctrl);
-	if (!(ctrl & THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_HW_STS) && !int_quiesce) {
+	if (!(ctrl & THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_EN) && !int_quiesce) {
 		dev_warn(dev->dev, "THC interrupt already unquiesce\n");
 		return 0;
 	}
 
+	if ((ctrl & THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_EN) && int_quiesce) {
+		dev_warn(dev->dev, "THC interrupt already quiesce\n");
+		return 0;
+	}
+
 	/* Quiesce device interrupt - Set quiesce bit and waiting for THC HW to ACK */
-	if (int_quiesce) {
+	if (int_quiesce)
 		regmap_write_bits(dev->thc_regmap, THC_M_PRT_CONTROL_OFFSET,
 				  THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_EN,
 				  THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_EN);
-	}
 
 	ret = regmap_read_poll_timeout(dev->thc_regmap, THC_M_PRT_CONTROL_OFFSET, ctrl,
 				       ctrl & THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_HW_STS,
 				       THC_REGMAP_POLLING_INTERVAL_US, THC_QUIESCE_EN_TIMEOUT_US);
 	if (ret) {
 		dev_err_once(dev->dev,
-			     "Timeout while waiting THC enter into interrupt quiesce state\n");
+			     "Timeout while waiting THC idle, target quiesce state = %s\n",
+			     int_quiesce ? "true" : "false");
 		return ret;
 	}
 
 	/* Unquiesce device interrupt - Clear the quiesce bit */
-	if (!int_quiesce) {
-		ctrl &= ~THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_EN;
-		regmap_write(dev->thc_regmap, THC_M_PRT_CONTROL_OFFSET, ctrl);
-	}
+	if (!int_quiesce)
+		regmap_write_bits(dev->thc_regmap, THC_M_PRT_CONTROL_OFFSET,
+				  THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_EN, 0);
 
 	return 0;
 }
