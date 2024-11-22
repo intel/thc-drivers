@@ -11,6 +11,8 @@
 #include <linux/sizes.h>
 #include <linux/pm_runtime.h>
 
+#include <linux/gpio/consumer.h>
+
 #include "intel-thc-dev.h"
 #include "intel-thc-hw.h"
 
@@ -26,6 +28,14 @@ static guid_t i2c_hid_guid =
 /* platform method */
 static guid_t thc_platform_guid =
 	GUID_INIT(0x84005682, 0x5b71, 0x41a4, 0x8d, 0x66, 0x81, 0x30, 0xf7, 0x87, 0xa1, 0x38);
+
+/* Wake on Touch Virtual GPIO */
+static const struct acpi_gpio_params wake_gpio = { 0, 0, true};
+
+static const struct acpi_gpio_mapping thc_acpi_gpios[] = {
+	{"wake-on-touch", &wake_gpio, 1},
+	{}
+};
 
 /**
  * quicki2c_acpi_get_dsm_property - Query device ACPI DSM parameter
@@ -190,7 +200,38 @@ static int quicki2c_get_acpi_resources(struct quicki2c_device *qcdev)
 		return -EOPNOTSUPP;
 	}
 
+	/*
+	 * Query Wake on Touch GPIO pin, it doesn't impact major touch function,
+	 * not return error even query failed.
+	 */
+	ret = acpi_dev_add_driver_gpios(adev, &thc_acpi_gpios[0]);
+	if (ret) {
+		dev_err(qcdev->dev, "Failed to add acpi gpio resource, ret = %d\n", ret);
+		return 0;
+	}
+
+	qcdev->gpio_irq = acpi_dev_gpio_irq_wake_get_by(adev, "wake-on-touch",
+							0, &qcdev->gpio_irq_wakeable);
+	if (qcdev->gpio_irq <= 0)
+		dev_err(qcdev->dev, "Failed to find gpio resource\n");
+
 	return 0;
+}
+
+/**
+ * quicki2c_wake_irq_handler - The ISR of the wake interrupt
+ *
+ * @irq: The irq number
+ * @dev_id: pointer to the device structure
+ *
+ * This is ISR for touch wakeup event which can wake system from low power
+ * mode, no other additional action needed.
+ *
+ * Return: IRQ_HANDLED to finish this handler
+ */
+static irqreturn_t quicki2c_wake_irq_handler(int irq, void *dev_id)
+{
+	return IRQ_HANDLED;
 }
 
 /**
@@ -371,6 +412,12 @@ static struct quicki2c_device *quicki2c_dev_init(struct pci_dev *pdev, void __io
 		return ERR_PTR(ret);
 	}
 
+	ret = thc_interrupt_quiesce(qcdev->thc_hw, true);
+	if (ret)
+		return ERR_PTR(ret);
+
+	thc_dma_unconfigure(qcdev->thc_hw);
+
 	ret = thc_port_select(qcdev->thc_hw, THC_PORT_TYPE_I2C);
 	if (ret) {
 		dev_err_once(dev, "Failed to select THC port, ret = %d.\n", ret);
@@ -383,6 +430,8 @@ static struct quicki2c_device *quicki2c_dev_init(struct pci_dev *pdev, void __io
 				 qcdev->i2c_clock_lcnt);
 	if (ret)
 		return ERR_PTR(ret);
+
+	thc_int_trigger_type_select(qcdev->thc_hw, false);
 
 	thc_interrupt_config(qcdev->thc_hw);
 
@@ -583,10 +632,6 @@ static int quicki2c_probe(struct pci_dev *pdev,
 
 	pci_set_drvdata(pdev, qcdev);
 
-	ret = thc_interrupt_quiesce(qcdev->thc_hw, true);
-	if (ret)
-		goto dev_deinit;
-
 	ret = devm_request_threaded_irq(&pdev->dev, pdev->irq,
 					quicki2c_irq_quick_handler,
 					quicki2c_irq_thread_handler,
@@ -603,6 +648,8 @@ static int quicki2c_probe(struct pci_dev *pdev,
 		dev_err(&pdev->dev, "Get device descriptor failed, ret = %d\n", ret);
 		goto dev_deinit;
 	}
+
+	thc_i2c_compat_config(qcdev->thc_hw, qcdev->dev_desc.max_input_len, 100);
 
 	ret = quicki2c_alloc_report_buf(qcdev);
 	if (ret) {
@@ -629,7 +676,7 @@ static int quicki2c_probe(struct pci_dev *pdev,
 	ret = quicki2c_reset(qcdev);
 	if (ret) {
 		dev_err(&pdev->dev, "Reset HIDI2C device failed, ret= %d\n", ret);
-		goto dev_deinit;
+		//goto dev_deinit;
 	}
 
 	ret = quicki2c_get_report_descriptor(qcdev);
@@ -645,6 +692,23 @@ static int quicki2c_probe(struct pci_dev *pdev,
 	}
 
 	qcdev->state = QUICKI2C_ENABLED;
+
+	if (qcdev->gpio_irq > 0) {
+		ret = devm_request_threaded_irq(&pdev->dev, qcdev->gpio_irq,
+						quicki2c_wake_irq_handler,
+						NULL,
+						IRQF_ONESHOT,
+						"thc-wake",
+						qcdev);
+		if (ret) {
+			dev_warn(&pdev->dev, "Request wake irq failure. ret = %d\n",
+				 ret);
+			dev_warn(&pdev->dev, "Device no wake capability\n");
+			qcdev->gpio_irq_wakeable = false;
+		}
+
+		disable_irq(qcdev->gpio_irq);
+	}
 
 	/* Enable runtime power management */
 	pm_runtime_use_autosuspend(qcdev->dev);
@@ -690,6 +754,9 @@ static void quicki2c_remove(struct pci_dev *pdev)
 	quicki2c_dma_deinit(qcdev);
 
 	pm_runtime_get_noresume(qcdev->dev);
+
+	if (qcdev->gpio_irq > 0)
+		acpi_dev_remove_driver_gpios(qcdev->acpi_dev);
 
 	quicki2c_dev_deinit(qcdev);
 
@@ -747,6 +814,12 @@ static int quicki2c_suspend(struct device *device)
 
 	thc_dma_unconfigure(qcdev->thc_hw);
 
+	if (qcdev->gpio_irq_wakeable) {
+		enable_irq(qcdev->gpio_irq);
+		enable_irq_wake(qcdev->gpio_irq);
+		dev_dbg(&pdev->dev, "Enable irq wake\n");
+	}
+
 	return 0;
 }
 
@@ -759,6 +832,12 @@ static int quicki2c_resume(struct device *device)
 	qcdev = pci_get_drvdata(pdev);
 	if (!qcdev)
 		return -ENODEV;
+
+	if (qcdev->gpio_irq_wakeable) {
+		disable_irq_wake(qcdev->gpio_irq);
+		disable_irq(qcdev->gpio_irq);
+		dev_dbg(&pdev->dev, "Disable irq wake\n");
+	}
 
 	ret = thc_port_select(qcdev->thc_hw, THC_PORT_TYPE_I2C);
 	if (ret)
@@ -942,6 +1021,10 @@ static const struct pci_device_id quicki2c_pci_tbl[] = {
 	{PCI_VDEVICE(INTEL, THC_PTL_H_DEVICE_ID_I2C_PORT2), },
 	{PCI_VDEVICE(INTEL, THC_PTL_U_DEVICE_ID_I2C_PORT1), },
 	{PCI_VDEVICE(INTEL, THC_PTL_U_DEVICE_ID_I2C_PORT2), },
+	{PCI_VDEVICE(INTEL, THC_PTL_A_DEVICE_ID_I2C_PORT1), },
+	{PCI_VDEVICE(INTEL, THC_PTL_A_DEVICE_ID_I2C_PORT2), },
+	{PCI_VDEVICE(INTEL, THC_WCL_P_DEVICE_ID_I2C_PORT1), },
+	{PCI_VDEVICE(INTEL, THC_WCL_P_DEVICE_ID_I2C_PORT2), },
 	{}
 };
 MODULE_DEVICE_TABLE(pci, quicki2c_pci_tbl);

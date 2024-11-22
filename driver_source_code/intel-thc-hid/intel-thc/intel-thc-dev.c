@@ -520,10 +520,11 @@ int thc_interrupt_quiesce(const struct thc_device *dev, bool int_quiesce)
 	}
 
 	/* Quiesce device interrupt - Set quiesce bit and waiting for THC HW to ACK */
-	if (int_quiesce)
+	if (int_quiesce) {
 		regmap_write_bits(dev->thc_regmap, THC_M_PRT_CONTROL_OFFSET,
 				  THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_EN,
 				  THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_EN);
+	}
 
 	ret = regmap_read_poll_timeout(dev->thc_regmap, THC_M_PRT_CONTROL_OFFSET, ctrl,
 				       ctrl & THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_HW_STS,
@@ -536,9 +537,10 @@ int thc_interrupt_quiesce(const struct thc_device *dev, bool int_quiesce)
 	}
 
 	/* Unquiesce device interrupt - Clear the quiesce bit */
-	if (!int_quiesce)
-		regmap_write_bits(dev->thc_regmap, THC_M_PRT_CONTROL_OFFSET,
-				  THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_EN, 0);
+	if (!int_quiesce) {
+		ctrl &= ~THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_EN;
+		regmap_write(dev->thc_regmap, THC_M_PRT_CONTROL_OFFSET, ctrl);
+	}
 
 	return 0;
 }
@@ -1438,6 +1440,51 @@ int thc_i2c_subip_regs_restore(struct thc_device *dev)
 	return 0;
 }
 EXPORT_SYMBOL_NS_GPL(thc_i2c_subip_regs_restore, INTEL_THC);
+
+/**
+ * thc_i2c_compat_config - I2C compatible configure
+ *
+ * @dev: The pointer of THC private device context
+ * @max_packet_size: max input report packet size
+ * @min_packet_interval: min interval between packets, unit is 10us
+ */
+void thc_i2c_compat_config(struct thc_device *dev,
+			   u32 max_packet_size, u32 min_packet_interval)
+{
+	u32 val = 0;
+
+	if (max_packet_size)
+		val = FIELD_PREP(THC_M_PRT_SPI_ICRRD_OPCODE_I2C_MAX_SIZE, max_packet_size);
+
+	if (min_packet_interval)
+		val |= FIELD_PREP(THC_M_PRT_SPI_ICRRD_OPCODE_I2C_INTERVAL, min_packet_interval);
+
+	val |= THC_M_PRT_SPI_ICRRD_OPCODE_I2C_MAX_SIZE_EN |
+	       THC_M_PRT_SPI_ICRRD_OPCODE_I2C_INTERVAL_EN;
+
+	regmap_write(dev->thc_regmap, THC_M_PRT_SPI_ICRRD_OPCODE_OFFSET, val);
+
+	dev->i2c_compat_en = true;
+}
+EXPORT_SYMBOL_NS_GPL(thc_i2c_compat_config, INTEL_THC);
+
+void thc_i2c_compat_enable(struct thc_device *dev, bool enable)
+{
+	u32 mask, val;
+
+	if (!dev->i2c_compat_en)
+		return;
+
+	mask = THC_M_PRT_SPI_ICRRD_OPCODE_I2C_MAX_SIZE_EN |
+	       THC_M_PRT_SPI_ICRRD_OPCODE_I2C_INTERVAL_EN;
+
+	if (enable)
+		val = mask;
+	else
+		val = 0;
+
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_SPI_ICRRD_OPCODE_OFFSET, mask, val);
+}
 
 MODULE_AUTHOR("Xinpeng Sun <xinpeng.sun@intel.com>");
 MODULE_AUTHOR("Even Xu <even.xu@intel.com>");

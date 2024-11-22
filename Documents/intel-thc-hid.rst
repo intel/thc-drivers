@@ -6,6 +6,7 @@ Intel Touch Host Controller (THC)
 
 Touch Host Controller is the name of the IP block in PCH that interface with Touch Devices (ex:
 touchscreen, touchpad etc.). It is comprised of 3 key functional blocks:
+
 - A natively half-duplex Quad I/O capable SPI master
 - Low latency I2C interface to support HIDI2C compliant devices
 - A HW sequencer with RW DMA capability to system memory
@@ -197,23 +198,18 @@ Opcode (operation code) is used to tell THC or Touch IC what the operation will 
 read or PIO write.
 
 When THC is configured to SPI mode, opcodes are used for determining the read/write IO mode.
-There are some OPCode examples for SPI IO mode::
+There are some OPCode examples for SPI IO mode:
 
- +--------+---------------------------------+
- | opcode |  Corresponding SPI command      |
- +========+=================================+
- |  0x0B  | Read Single I/O                 |
- +--------+---------------------------------+
- |  0x02  | Write Single I/O                |
- +--------+---------------------------------+
- |  0xBB  | Read Dual I/O                   |
- +--------+---------------------------------+
- |  0xB2  | Write Dual I/O                  |
- +--------+---------------------------------+
- |  0xEB  | Read Quad I/O                   |
- +--------+---------------------------------+
- |  0xE2  | Write Quad I/O                  |
- +--------+---------------------------------+
+=======   ==============================
+opcode    Corresponding SPI command
+=======   ==============================
+0x0B      Read Single I/O
+0x02      Write Single I/O
+0xBB      Read Dual I/O
+0xB2      Write Dual I/O
+0xEB      Read Quad I/O
+0xE2      Write Quad I/O
+=======   ==============================
 
 In general, different touch IC has different OPCode definition. According to HIDSPI
 protocol whitepaper, those OPCodes are defined in device ACPI table, and driver needs to
@@ -224,22 +220,17 @@ When THC is working in I2C mode, opcodes are used to tell THC what's the next PI
 I2C SubIP APB register read, I2C SubIP APB register write, I2C touch IC device read,
 I2C touch IC device write, I2C touch IC device write followed by read.
 
-Here are the THC pre-defined opcodes for I2C mode::
+Here are the THC pre-defined opcodes for I2C mode:
 
- +--------+-------------------------------------------+----------+
- | opcode |       Corresponding I2C command           | Address  |
- +========+===========================================+==========+
- |  0x12  | Read I2C SubIP APB internal registers     | 0h - FFh |
- +--------+-------------------------------------------+----------+
- |  0x13  | Write I2C SubIP APB internal registers    | 0h - FFh |
- +--------+-------------------------------------------+----------+
- |  0x14  | Read external Touch IC through I2C bus    | N/A      |
- +--------+-------------------------------------------+----------+
- |  0x18  | Write external Touch IC through I2C bus   | N/A      |
- +--------+-------------------------------------------+----------+
- |  0x1C  | Write then read external Touch IC through | N/A      |
- |        | I2C bus                                   |          |
- +--------+-------------------------------------------+----------+
+=======   ===================================================   ===========
+opcode    Corresponding I2C command                             Address
+=======   ===================================================   ===========
+0x12      Read I2C SubIP APB internal registers                 0h - FFh
+0x13      Write I2C SubIP APB internal registers                0h - FFh
+0x14      Read external Touch IC through I2C bus                N/A
+0x18      Write external Touch IC through I2C bus               N/A
+0x1C      Write then read external Touch IC through I2C bus     N/A
+=======   ===================================================   ===========
 
 3.2 PIO
 -------
@@ -403,30 +394,24 @@ required to honor this behavior): 00h 01h 02h 03h 04h 80h 81h 82h 83h 84h 00h 01
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Intel THC uses PRD entry descriptor for every PRD entry. Every PRD entry descriptor occupies
-128 bits memories::
+128 bits memories:
 
- +-------------------+---------+------------------------------------------------+
- | struct field      | bit(s)  | description                                    |
- +===================+=========+================================================+
- | dest_addr         | 53..0   | destination memory address, as every entry     |
- |                   |         | is 4KB, ignore lowest 10 bits of address.      |
- +-------------------+---------+------------------------------------------------+
- | reserved1         | 54..62  | reserved                                       |
- +-------------------+---------+------------------------------------------------+
- | int_on_completion | 63      | completion interrupt enable bit, if this bit   |
- |                   |         | set it means THC will trigger a completion     |
- |                   |         | interrupt. This bit is set by SW driver.       |
- +-------------------+---------+------------------------------------------------+
- | len               | 87..64  | how many bytes of data in this entry.          |
- +-------------------+---------+------------------------------------------------+
- | end_of_prd        | 88      | end of PRD table bit, if this bit is set,      |
- |                   |         | it means this entry is last entry in this PRD  |
- |                   |         | table. This bit is set by SW driver.           |
- +-------------------+---------+------------------------------------------------+
- | hw_status         | 90..89  | HW status bits                                 |
- +-------------------+---------+------------------------------------------------+
- | reserved2         | 127..91 | reserved                                       |
- +-------------------+---------+------------------------------------------------+
+===================   ========   ===============================================
+struct field          bit(s)     description
+===================   ========   ===============================================
+dest_addr             53..0      destination memory address, as every entry
+                                 is 4KB, ignore lowest 10 bits of address.
+reserved1             54..62     reserved
+int_on_completion     63         completion interrupt enable bit, if this bit
+                                 set it means THC will trigger a completion
+                                 interrupt. This bit is set by SW driver.
+len                   87..64     how many bytes of data in this entry.
+end_of_prd            88         end of PRD table bit, if this bit is set,
+                                 it means this entry is last entry in this PRD
+                                 table. This bit is set by SW driver.
+hw_status             90..89     HW status bits
+reserved2             127..91    reserved
+===================   ========   ===============================================
 
 And one PRD table can include up to 256 PRD entries, as every entries is 4K bytes, so every
 PRD table can describe 1M bytes memory.
@@ -499,8 +484,7 @@ Sequence of steps to read data from RX DMA buffer:
 
 Generic Output Report Flow:
 
-- HID core calls hid_request or hid_output_report callback with a request to THC QuickSPI driver.
-  hid_request is used for set/get feature report, and hid_output_request for output report.
+- HID core calls raw_request callback with a request to THC QuickSPI driver.
 - THC QuickSPI Driver converts request provided data into the output report packet and copies it
   to THC's write DMA buffer.
 - Start TxDMA to complete the write operation.
@@ -563,7 +547,7 @@ Sequence of steps to read data from RX DMA buffer:
 
 Generic Output Report Flow:
 
-- HID core call THC QuickI2C thc_hidi2c_hid_output_report callback.
+- HID core call THC QuickI2C raw_request callback.
 - THC QuickI2C uses PIO or TXDMA to write a SET_REPORT request to TIC's command register. Report
   type in SET_REPORT should be set to Output.
 - THC QuickI2C programs TxDMA buffer with TX Data to be written to TIC's data register. The first

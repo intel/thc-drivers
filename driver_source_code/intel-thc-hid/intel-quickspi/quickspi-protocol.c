@@ -278,10 +278,6 @@ int reset_tic(struct quickspi_device *qsdev)
 	/* First interrupt uses level trigger to avoid missing interrupt */
 	thc_int_trigger_type_select(qsdev->thc_hw, false);
 
-	ret = thc_interrupt_quiesce(qsdev->thc_hw, true);
-	if (ret)
-		return ret;
-
 	ret = acpi_tic_reset(qsdev);
 	if (ret)
 		return ret;

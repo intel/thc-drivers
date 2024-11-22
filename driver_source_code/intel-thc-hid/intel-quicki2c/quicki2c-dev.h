@@ -9,10 +9,14 @@
 
 #define THC_LNL_DEVICE_ID_I2C_PORT1	0xA848
 #define THC_LNL_DEVICE_ID_I2C_PORT2	0xA84A
-#define THC_PTL_H_DEVICE_ID_I2C_PORT1	0xE348
-#define THC_PTL_H_DEVICE_ID_I2C_PORT2	0xE34A
-#define THC_PTL_U_DEVICE_ID_I2C_PORT1	0xE448
-#define THC_PTL_U_DEVICE_ID_I2C_PORT2	0xE44A
+#define THC_PTL_H_DEVICE_ID_I2C_PORT1	0xE348/* PTL-Px/H Port #1 */
+#define THC_PTL_H_DEVICE_ID_I2C_PORT2	0xE34A/* PTL-Px/H Port #2 */
+#define THC_PTL_U_DEVICE_ID_I2C_PORT1	0xE448/* PTL-U/P Port #1 */
+#define THC_PTL_U_DEVICE_ID_I2C_PORT2	0xE44A/* PTL-U/P Port #2 */
+#define THC_PTL_A_DEVICE_ID_I2C_PORT1	0x67C8/* PTL-A Port #1 */
+#define THC_PTL_A_DEVICE_ID_I2C_PORT2	0x67CA/* PTL-A Port #2 */
+#define THC_WCL_P_DEVICE_ID_I2C_PORT1	0x4D48/* WCL-P Port #1 */
+#define THC_WCL_P_DEVICE_ID_I2C_PORT2	0x4D4A/* WCL-P Port #2 */
 
 /* Packet size value, the unit is 16 bytes */
 #define MAX_PACKET_SIZE_VALUE_LNL			256
@@ -152,6 +156,8 @@ struct acpi_device;
  * @report_len: the length of input/output report packet
  * @reset_ack_wq: workqueue for waiting reset response from device
  * @reset_ack: indicate reset response received or not
+ * @gpio_irq : gpio interrupt irq number for wake on touch
+ * @gpio_irq_wakeable : indicate wake gpio workable or not
  */
 struct quicki2c_device {
 	struct device *dev;
@@ -181,6 +187,9 @@ struct quicki2c_device {
 
 	wait_queue_head_t reset_ack_wq;
 	bool reset_ack;
+
+	int gpio_irq;
+	bool gpio_irq_wakeable;
 };
 
 #endif /* _QUICKI2C_DEV_H_ */

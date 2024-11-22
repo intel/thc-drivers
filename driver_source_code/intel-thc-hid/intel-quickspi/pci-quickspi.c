@@ -11,6 +11,8 @@
 #include <linux/pci.h>
 #include <linux/pm_runtime.h>
 
+#include <linux/gpio/consumer.h>
+
 #include "intel-thc-dev.h"
 #include "intel-thc-hw.h"
 
@@ -45,6 +47,14 @@ static guid_t thc_quickspi_guid =
 static guid_t thc_platform_guid =
 	GUID_INIT(0x84005682, 0x5b71, 0x41a4, 0x8d, 0x66, 0x81, 0x30,
 		  0xf7, 0x87, 0xa1, 0x38);
+
+/* Wake on Touch Virtual GPIO */
+static const struct acpi_gpio_params wake_gpio = { 0, 0, true};
+
+static const struct acpi_gpio_mapping thc_acpi_gpios[] = {
+	{"wake-on-touch", &wake_gpio, 1},
+	{}
+};
 
 /**
  * thc_acpi_get_property - Query device ACPI parameter
@@ -207,7 +217,38 @@ static int quickspi_get_acpi_resources(struct quickspi_device *qsdev)
 	if (ret)
 		return ret;
 
+	/*
+	 * Query Wake on Touch GPIO pin, it doesn't impact major touch function,
+	 * not return error even query failed.
+	 */
+	ret = acpi_dev_add_driver_gpios(adev, &thc_acpi_gpios[0]);
+	if (ret) {
+		dev_err(qsdev->dev, "Failed to add acpi gpio resource, ret = %d\n", ret);
+		return 0;
+	}
+
+	qsdev->gpio_irq = acpi_dev_gpio_irq_wake_get_by(adev, "wake-on-touch",
+							0, &qsdev->gpio_irq_wakeable);
+	if (qsdev->gpio_irq <= 0)
+		dev_err(qsdev->dev, "Failed to find gpio resource\n");
+
 	return 0;
+}
+
+/**
+ * quickspi_wake_irq_handler - The ISR of the wake interrupt
+ *
+ * @irq: The irq number
+ * @dev_id: pointer to the device structure
+ *
+ * This is ISR for touch wakeup event which can wake system from low power
+ * mode, no other additional action needed.
+ *
+ * Return: IRQ_HANDLED to finish this handler
+ */
+static irqreturn_t quickspi_wake_irq_handler(int irq, void *dev_id)
+{
+	return IRQ_HANDLED;
 }
 
 /**
@@ -374,6 +415,12 @@ static struct quickspi_device *quickspi_dev_init(struct pci_dev *pdev, void __io
 		dev_err(dev, "Failed to initialize THC device context, ret = %d.\n", ret);
 		return ERR_PTR(ret);
 	}
+
+	ret = thc_interrupt_quiesce(qsdev->thc_hw, true);
+	if (ret)
+		return ERR_PTR(ret);
+
+	thc_dma_unconfigure(qsdev->thc_hw);
 
 	ret = thc_port_select(qsdev->thc_hw, THC_PORT_TYPE_SPI);
 	if (ret) {
@@ -647,7 +694,22 @@ static int quickspi_probe(struct pci_dev *pdev,
 		goto dma_deinit;
 	}
 
-	qsdev->state = QUICKSPI_ENABLED;
+	if (qsdev->gpio_irq > 0) {
+		ret = devm_request_threaded_irq(&pdev->dev, qsdev->gpio_irq,
+						quickspi_wake_irq_handler,
+						NULL,
+						IRQF_ONESHOT,
+						"thc-wake",
+						qsdev);
+		if (ret) {
+			dev_warn(&pdev->dev, "Request wake irq failure. ret = %d\n",
+				 ret);
+			dev_warn(&pdev->dev, "Device lost wake capability\n");
+			qsdev->gpio_irq_wakeable = false;
+		}
+
+		disable_irq(qsdev->gpio_irq);
+	}
 
 	/* Enable runtime power management */
 	pm_runtime_use_autosuspend(qsdev->dev);
@@ -655,6 +717,8 @@ static int quickspi_probe(struct pci_dev *pdev,
 	pm_runtime_mark_last_busy(qsdev->dev);
 	pm_runtime_put_noidle(qsdev->dev);
 	pm_runtime_put_autosuspend(qsdev->dev);
+
+	qsdev->state = QUICKSPI_ENABLED;
 
 	dev_dbg(&pdev->dev, "QuickSPI probe success\n");
 
@@ -693,6 +757,9 @@ static void quickspi_remove(struct pci_dev *pdev)
 	quickspi_dma_deinit(qsdev);
 
 	pm_runtime_get_noresume(qsdev->dev);
+
+	if (qsdev->gpio_irq > 0)
+		acpi_dev_remove_driver_gpios(qsdev->acpi_dev);
 
 	quickspi_dev_deinit(qsdev);
 
@@ -746,6 +813,12 @@ static int quickspi_suspend(struct device *device)
 
 	thc_dma_unconfigure(qsdev->thc_hw);
 
+	if (qsdev->gpio_irq_wakeable) {
+		enable_irq(qsdev->gpio_irq);
+		enable_irq_wake(qsdev->gpio_irq);
+		dev_dbg(&pdev->dev, "Enable irq wake\n");
+	}
+
 	return 0;
 }
 
@@ -758,6 +831,12 @@ static int quickspi_resume(struct device *device)
 	qsdev = pci_get_drvdata(pdev);
 	if (!qsdev)
 		return -ENODEV;
+
+	if (qsdev->gpio_irq_wakeable) {
+		disable_irq_wake(qsdev->gpio_irq);
+		disable_irq(qsdev->gpio_irq);
+		dev_dbg(&pdev->dev, "Disable irq wake\n");
+	}
 
 	ret = thc_port_select(qsdev->thc_hw, THC_PORT_TYPE_SPI);
 	if (ret)
@@ -859,6 +938,12 @@ static int quickspi_restore(struct device *device)
 	if (!qsdev)
 		return -ENODEV;
 
+	ret = thc_interrupt_quiesce(qsdev->thc_hw, true);
+	if (ret)
+		return ret;
+
+	thc_dma_unconfigure(qsdev->thc_hw);
+
 	/* Reconfig THC HW when back from hibernate */
 	ret = thc_port_select(qsdev->thc_hw, THC_PORT_TYPE_SPI);
 	if (ret)
@@ -888,10 +973,6 @@ static int quickspi_restore(struct device *device)
 
 	thc_interrupt_enable(qsdev->thc_hw, true);
 
-	ret = thc_interrupt_quiesce(qsdev->thc_hw, false);
-	if (ret)
-		return ret;
-
 	/* TIC may lose power, needs go through reset flow */
 	ret = reset_tic(qsdev);
 	if (ret)
@@ -906,6 +987,8 @@ static int quickspi_restore(struct device *device)
 		       qsdev->low_power_ltr_val);
 
 	thc_change_ltr_mode(qsdev->thc_hw, THC_LTR_MODE_ACTIVE);
+
+	qsdev->state = QUICKSPI_ENABLED;
 
 	return 0;
 }
@@ -961,6 +1044,10 @@ static const struct pci_device_id quickspi_pci_tbl[] = {
 	{PCI_DEVICE_DATA(INTEL, THC_PTL_H_DEVICE_ID_SPI_PORT2, &ptl), },
 	{PCI_DEVICE_DATA(INTEL, THC_PTL_U_DEVICE_ID_SPI_PORT1, &ptl), },
 	{PCI_DEVICE_DATA(INTEL, THC_PTL_U_DEVICE_ID_SPI_PORT2, &ptl), },
+	{PCI_DEVICE_DATA(INTEL, THC_PTL_A_DEVICE_ID_SPI_PORT1, &ptl), },
+	{PCI_DEVICE_DATA(INTEL, THC_PTL_A_DEVICE_ID_SPI_PORT2, &ptl), },
+	{PCI_DEVICE_DATA(INTEL, THC_WCL_P_DEVICE_ID_SPI_PORT1, &ptl), },
+	{PCI_DEVICE_DATA(INTEL, THC_WCL_P_DEVICE_ID_SPI_PORT2, &ptl), },
 	{}
 };
 MODULE_DEVICE_TABLE(pci, quickspi_pci_tbl);

@@ -712,6 +712,8 @@ static int thc_swdma_read_start(struct thc_device *dev, void *write_buff,
 
 	thc_reset_dma_settings(dev);
 
+	thc_i2c_compat_enable(dev, false);
+
 	mask = THC_M_PRT_RPRD_CNTRL_SW_THC_SWDMA_I2C_WBC |
 	       THC_M_PRT_RPRD_CNTRL_SW_THC_SWDMA_I2C_RX_DLEN_EN;
 	val = FIELD_PREP(THC_M_PRT_RPRD_CNTRL_SW_THC_SWDMA_I2C_WBC, write_len) |
@@ -753,6 +755,8 @@ static int thc_swdma_read_completion(struct thc_device *dev)
 	ret = thc_wait_for_dma_pause(dev, THC_SWDMA);
 	if (ret)
 		return ret;
+
+	thc_i2c_compat_enable(dev, true);
 
 	thc_reset_dma_settings(dev);
 
