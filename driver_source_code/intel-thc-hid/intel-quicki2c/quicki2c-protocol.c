@@ -24,7 +24,7 @@ static int quicki2c_init_write_buf(struct quicki2c_device *qcdev, u32 cmd, int c
 		buf_len += HIDI2C_REG_LEN;
 
 	if (data && data_len)
-		buf_len += data_len;
+		buf_len += data_len + HIDI2C_LENGTH_LEN;
 
 	if (buf_len > write_buf_len)
 		return -EINVAL;
@@ -39,8 +39,13 @@ static int quicki2c_init_write_buf(struct quicki2c_device *qcdev, u32 cmd, int c
 		offset += HIDI2C_REG_LEN;
 	}
 
-	if (data && data_len)
+	if (data && data_len) {
+		__le16 len = cpu_to_le16(data_len + HIDI2C_LENGTH_LEN);
+
+		memcpy(write_buf + offset, &len, HIDI2C_LENGTH_LEN);
+		offset += HIDI2C_LENGTH_LEN;
 		memcpy(write_buf + offset, data, data_len);
+	}
 
 	return buf_len;
 }

@@ -53,6 +53,136 @@ static const struct regmap_config thc_regmap_cfg = {
 };
 
 /**
+ * thc_clear_state - Clear THC hardware state
+ *
+ * @dev: The pointer of THC device structure
+ */
+static void thc_clear_state(const struct thc_device *dev)
+{
+	u32 val;
+
+	/* Clear interrupt cause register */
+	val = THC_M_PRT_ERR_CAUSE_INVLD_DEV_ENTRY |
+	      THC_M_PRT_ERR_CAUSE_FRAME_BABBLE_ERR |
+	      THC_M_PRT_ERR_CAUSE_BUF_OVRRUN_ERR |
+	      THC_M_PRT_ERR_CAUSE_PRD_ENTRY_ERR;
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_ERR_CAUSE_OFFSET, val, val);
+
+	/* Clear interrupt error state */
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_READ_DMA_CNTRL_1_OFFSET,
+			  THC_M_PRT_READ_DMA_CNTRL_IE_STALL,
+			  THC_M_PRT_READ_DMA_CNTRL_IE_STALL);
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_READ_DMA_CNTRL_2_OFFSET,
+			  THC_M_PRT_READ_DMA_CNTRL_IE_STALL,
+			  THC_M_PRT_READ_DMA_CNTRL_IE_STALL);
+
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_INT_STATUS_OFFSET,
+			  THC_M_PRT_INT_STATUS_TXN_ERR_INT_STS,
+			  THC_M_PRT_INT_STATUS_TXN_ERR_INT_STS);
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_INT_STATUS_OFFSET,
+			  THC_M_PRT_INT_STATUS_FATAL_ERR_INT_STS,
+			  THC_M_PRT_INT_STATUS_FATAL_ERR_INT_STS);
+
+	val = THC_M_PRT_INT_EN_TXN_ERR_INT_EN |
+	      THC_M_PRT_INT_EN_FATAL_ERR_INT_EN |
+	      THC_M_PRT_INT_EN_BUF_OVRRUN_ERR_INT_EN;
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_INT_EN_OFFSET, val, val);
+
+	val = THC_M_PRT_SW_SEQ_STS_THC_SS_ERR |
+	      THC_M_PRT_SW_SEQ_STS_TSSDONE;
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_SW_SEQ_STS_OFFSET, val, val);
+
+	/* Clear RxDMA state */
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_READ_DMA_CNTRL_1_OFFSET,
+			  THC_M_PRT_READ_DMA_CNTRL_IE_EOF, 0);
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_READ_DMA_CNTRL_2_OFFSET,
+			  THC_M_PRT_READ_DMA_CNTRL_IE_EOF, 0);
+
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_READ_DMA_INT_STS_1_OFFSET,
+			  THC_M_PRT_READ_DMA_INT_STS_EOF_INT_STS,
+			  THC_M_PRT_READ_DMA_INT_STS_EOF_INT_STS);
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_READ_DMA_INT_STS_2_OFFSET,
+			  THC_M_PRT_READ_DMA_INT_STS_EOF_INT_STS,
+			  THC_M_PRT_READ_DMA_INT_STS_EOF_INT_STS);
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_READ_DMA_INT_STS_1_OFFSET,
+			  THC_M_PRT_READ_DMA_INT_STS_NONDMA_INT_STS,
+			  THC_M_PRT_READ_DMA_INT_STS_NONDMA_INT_STS);
+
+	/* Clear TxDMA state */
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_WRITE_DMA_CNTRL_OFFSET,
+			  THC_M_PRT_WRITE_DMA_CNTRL_THC_WRDMA_IE_IOC_DMACPL,
+			  THC_M_PRT_WRITE_DMA_CNTRL_THC_WRDMA_IE_IOC_DMACPL);
+
+	val = THC_M_PRT_WRITE_INT_STS_THC_WRDMA_ERROR_STS |
+	      THC_M_PRT_WRITE_INT_STS_THC_WRDMA_IOC_STS |
+	      THC_M_PRT_WRITE_INT_STS_THC_WRDMA_CMPL_STATUS;
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_WRITE_INT_STS_OFFSET, val, val);
+
+	/* Reset all DMAs count */
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_DB_CNT_1_OFFSET,
+			  THC_M_PRT_DB_CNT_1_THC_M_PRT_DB_CNT_RST,
+			  THC_M_PRT_DB_CNT_1_THC_M_PRT_DB_CNT_RST);
+
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_DEVINT_CNT_OFFSET,
+			  THC_M_PRT_DEVINT_CNT_THC_M_PRT_DEVINT_CNT_RST,
+			  THC_M_PRT_DEVINT_CNT_THC_M_PRT_DEVINT_CNT_RST);
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_READ_DMA_CNTRL_1_OFFSET,
+			  THC_M_PRT_READ_DMA_CNTRL_TPCPR,
+			  THC_M_PRT_READ_DMA_CNTRL_TPCPR);
+
+	/* Reset THC hardware sequence state */
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_FRAME_DROP_CNT_1_OFFSET,
+			  THC_M_PRT_FRAME_DROP_CNT_1_RFDC,
+			  THC_M_PRT_FRAME_DROP_CNT_1_RFDC);
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_FRAME_DROP_CNT_2_OFFSET,
+			  THC_M_PRT_FRAME_DROP_CNT_2_RFDC,
+			  THC_M_PRT_FRAME_DROP_CNT_2_RFDC);
+
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_FRM_CNT_1_OFFSET,
+			  THC_M_PRT_FRM_CNT_1_THC_M_PRT_FRM_CNT_RST,
+			  THC_M_PRT_FRM_CNT_1_THC_M_PRT_FRM_CNT_RST);
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_FRM_CNT_2_OFFSET,
+			  THC_M_PRT_FRM_CNT_2_THC_M_PRT_FRM_CNT_RST,
+			  THC_M_PRT_FRM_CNT_2_THC_M_PRT_FRM_CNT_RST);
+
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_RXDMA_PKT_CNT_1_OFFSET,
+			  THC_M_PRT_RXDMA_PKT_CNT_1_THC_M_PRT_RXDMA_PKT_CNT_RST,
+			  THC_M_PRT_RXDMA_PKT_CNT_1_THC_M_PRT_RXDMA_PKT_CNT_RST);
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_RXDMA_PKT_CNT_2_OFFSET,
+			  THC_M_PRT_RXDMA_PKT_CNT_2_THC_M_PRT_RXDMA_PKT_CNT_RST,
+			  THC_M_PRT_RXDMA_PKT_CNT_2_THC_M_PRT_RXDMA_PKT_CNT_RST);
+
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_SWINT_CNT_1_OFFSET,
+			  THC_M_PRT_SWINT_CNT_1_THC_M_PRT_SWINT_CNT_RST,
+			  THC_M_PRT_SWINT_CNT_1_THC_M_PRT_SWINT_CNT_RST);
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_SWINT_CNT_1_OFFSET,
+			  THC_M_PRT_SWINT_CNT_1_THC_M_PRT_SWINT_CNT_RST,
+			  THC_M_PRT_SWINT_CNT_1_THC_M_PRT_SWINT_CNT_RST);
+
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_TX_FRM_CNT_OFFSET,
+			  THC_M_PRT_TX_FRM_CNT_THC_M_PRT_TX_FRM_CNT_RST,
+			  THC_M_PRT_TX_FRM_CNT_THC_M_PRT_TX_FRM_CNT_RST);
+
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_TXDMA_PKT_CNT_OFFSET,
+			  THC_M_PRT_TXDMA_PKT_CNT_THC_M_PRT_TXDMA_PKT_CNT_RST,
+			  THC_M_PRT_TXDMA_PKT_CNT_THC_M_PRT_TXDMA_PKT_CNT_RST);
+
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_UFRM_CNT_1_OFFSET,
+			  THC_M_PRT_UFRM_CNT_1_THC_M_PRT_UFRM_CNT_RST,
+			  THC_M_PRT_UFRM_CNT_1_THC_M_PRT_UFRM_CNT_RST);
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_UFRM_CNT_2_OFFSET,
+			  THC_M_PRT_UFRM_CNT_2_THC_M_PRT_UFRM_CNT_RST,
+			  THC_M_PRT_UFRM_CNT_2_THC_M_PRT_UFRM_CNT_RST);
+
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_PRD_EMPTY_CNT_1_OFFSET,
+			  THC_M_PRT_PRD_EMPTY_CNT_1_RPTEC,
+			  THC_M_PRT_PRD_EMPTY_CNT_1_RPTEC);
+	regmap_write_bits(dev->thc_regmap, THC_M_PRT_PRD_EMPTY_CNT_2_OFFSET,
+			  THC_M_PRT_PRD_EMPTY_CNT_2_RPTEC,
+			  THC_M_PRT_PRD_EMPTY_CNT_2_RPTEC);
+}
+
+/**
  * thc_dev_init - Allocate and initialize the THC device structure
  *
  * @device: The pointer of device structure
@@ -78,6 +208,8 @@ struct thc_device *thc_dev_init(struct device *device, void __iomem *mem_addr)
 		return ERR_PTR(ret);
 	}
 
+	thc_clear_state(thc_dev);
+
 	mutex_init(&thc_dev->thc_bus_lock);
 	init_waitqueue_head(&thc_dev->write_complete_wait);
 	init_waitqueue_head(&thc_dev->swdma_complete_wait);
@@ -90,7 +222,7 @@ struct thc_device *thc_dev_init(struct device *device, void __iomem *mem_addr)
 
 	return thc_dev;
 }
-EXPORT_SYMBOL_NS_GPL(thc_dev_init, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_dev_init, "INTEL_THC");
 
 static int prepare_pio(const struct thc_device *dev, const u8 pio_op,
 		       const u32 address, const u32 size)
@@ -228,7 +360,7 @@ end:
 	mutex_unlock(&dev->thc_bus_lock);
 	return ret;
 }
-EXPORT_SYMBOL_NS_GPL(thc_tic_pio_read, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_tic_pio_read, "INTEL_THC");
 
 /**
  * thc_tic_pio_write - Write data to touch device by PIO
@@ -274,7 +406,7 @@ end:
 	mutex_unlock(&dev->thc_bus_lock);
 	return ret;
 }
-EXPORT_SYMBOL_NS_GPL(thc_tic_pio_write, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_tic_pio_write, "INTEL_THC");
 
 /**
  * thc_tic_pio_write_and_read - Write data followed by read data by PIO
@@ -331,7 +463,7 @@ end:
 	mutex_unlock(&dev->thc_bus_lock);
 	return ret;
 }
-EXPORT_SYMBOL_NS_GPL(thc_tic_pio_write_and_read, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_tic_pio_write_and_read, "INTEL_THC");
 
 /**
  * thc_interrupt_config - Configure THC interrupts
@@ -465,7 +597,7 @@ void thc_interrupt_config(struct thc_device *dev)
 				  mask, mbits);
 	}
 }
-EXPORT_SYMBOL_NS_GPL(thc_interrupt_config, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_interrupt_config, "INTEL_THC");
 
 /**
  * thc_int_trigger_type_select - Select THC interrupt trigger type
@@ -479,7 +611,7 @@ void thc_int_trigger_type_select(struct thc_device *dev, bool edge_trigger)
 			  THC_M_PRT_TSEQ_CNTRL_1_INT_EDG_DET_EN,
 			  edge_trigger ? THC_M_PRT_TSEQ_CNTRL_1_INT_EDG_DET_EN : 0);
 }
-EXPORT_SYMBOL_NS_GPL(thc_int_trigger_type_select, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_int_trigger_type_select, "INTEL_THC");
 
 /**
  * thc_interrupt_enable - Enable or disable THC interrupt
@@ -493,7 +625,7 @@ void thc_interrupt_enable(struct thc_device *dev, bool int_enable)
 			  THC_M_PRT_INT_EN_GBL_INT_EN,
 			  int_enable ? THC_M_PRT_INT_EN_GBL_INT_EN : 0);
 }
-EXPORT_SYMBOL_NS_GPL(thc_interrupt_enable, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_interrupt_enable, "INTEL_THC");
 
 /**
  * thc_interrupt_quiesce - Quiesce or unquiesce external touch device interrupt
@@ -520,11 +652,10 @@ int thc_interrupt_quiesce(const struct thc_device *dev, bool int_quiesce)
 	}
 
 	/* Quiesce device interrupt - Set quiesce bit and waiting for THC HW to ACK */
-	if (int_quiesce) {
+	if (int_quiesce)
 		regmap_write_bits(dev->thc_regmap, THC_M_PRT_CONTROL_OFFSET,
 				  THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_EN,
 				  THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_EN);
-	}
 
 	ret = regmap_read_poll_timeout(dev->thc_regmap, THC_M_PRT_CONTROL_OFFSET, ctrl,
 				       ctrl & THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_HW_STS,
@@ -537,14 +668,13 @@ int thc_interrupt_quiesce(const struct thc_device *dev, bool int_quiesce)
 	}
 
 	/* Unquiesce device interrupt - Clear the quiesce bit */
-	if (!int_quiesce) {
-		ctrl &= ~THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_EN;
-		regmap_write(dev->thc_regmap, THC_M_PRT_CONTROL_OFFSET, ctrl);
-	}
+	if (!int_quiesce)
+		regmap_write_bits(dev->thc_regmap, THC_M_PRT_CONTROL_OFFSET,
+				  THC_M_PRT_CONTROL_THC_DEVINT_QUIESCE_EN, 0);
 
 	return 0;
 }
-EXPORT_SYMBOL_NS_GPL(thc_interrupt_quiesce, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_interrupt_quiesce, "INTEL_THC");
 
 /**
  * thc_set_pio_interrupt_support - Determine PIO interrupt is supported or not
@@ -556,7 +686,7 @@ void thc_set_pio_interrupt_support(struct thc_device *dev, bool supported)
 {
 	dev->pio_int_supported = supported;
 }
-EXPORT_SYMBOL_NS_GPL(thc_set_pio_interrupt_support, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_set_pio_interrupt_support, "INTEL_THC");
 
 /**
  * thc_ltr_config - Configure THC Latency Tolerance Reporting(LTR) settings
@@ -624,7 +754,7 @@ void thc_ltr_config(struct thc_device *dev, u32 active_ltr_us, u32 lp_ltr_us)
 
 	regmap_write(dev->thc_regmap, THC_M_CMN_LTR_CTRL_OFFSET, tmp);
 }
-EXPORT_SYMBOL_NS_GPL(thc_ltr_config, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_ltr_config, "INTEL_THC");
 
 /**
  * thc_change_ltr_mode - Change THC LTR mode
@@ -649,7 +779,7 @@ void thc_change_ltr_mode(struct thc_device *dev, u32 ltr_mode)
 			  THC_M_CMN_LTR_CTRL_LP_LTR_EN,
 			  THC_M_CMN_LTR_CTRL_LP_LTR_EN);
 }
-EXPORT_SYMBOL_NS_GPL(thc_change_ltr_mode, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_change_ltr_mode, "INTEL_THC");
 
 /**
  * thc_ltr_unconfig - Unconfigure THC Latency Tolerance Reporting(LTR) settings
@@ -670,7 +800,7 @@ void thc_ltr_unconfig(struct thc_device *dev)
 
 	regmap_write(dev->thc_regmap, THC_M_CMN_LTR_CTRL_OFFSET, ltr_ctrl);
 }
-EXPORT_SYMBOL_NS_GPL(thc_ltr_unconfig, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_ltr_unconfig, "INTEL_THC");
 
 /**
  * thc_int_cause_read - Read interrupt cause register value
@@ -688,7 +818,7 @@ u32 thc_int_cause_read(struct thc_device *dev)
 
 	return int_cause;
 }
-EXPORT_SYMBOL_NS_GPL(thc_int_cause_read, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_int_cause_read, "INTEL_THC");
 
 static void thc_print_txn_error_cause(const struct thc_device *dev)
 {
@@ -929,7 +1059,7 @@ int thc_interrupt_handler(struct thc_device *dev)
 
 	return interrupt_type;
 }
-EXPORT_SYMBOL_NS_GPL(thc_interrupt_handler, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_interrupt_handler, "INTEL_THC");
 
 /**
  * thc_port_select - Set THC port type
@@ -977,7 +1107,7 @@ int thc_port_select(struct thc_device *dev, enum thc_port_type port_type)
 
 	return 0;
 }
-EXPORT_SYMBOL_NS_GPL(thc_port_select, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_port_select, "INTEL_THC");
 
 #define THC_SPI_FREQUENCY_7M	7812500
 #define THC_SPI_FREQUENCY_15M	15625000
@@ -1082,7 +1212,7 @@ int thc_spi_read_config(struct thc_device *dev, u32 spi_freq_val,
 
 	return 0;
 }
-EXPORT_SYMBOL_NS_GPL(thc_spi_read_config, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_spi_read_config, "INTEL_THC");
 
 /**
  * thc_spi_write_config - Configure SPI bus write attributes
@@ -1136,7 +1266,7 @@ int thc_spi_write_config(struct thc_device *dev, u32 spi_freq_val,
 
 	return 0;
 }
-EXPORT_SYMBOL_NS_GPL(thc_spi_write_config, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_spi_write_config, "INTEL_THC");
 
 /**
  * thc_spi_input_output_address_config - Configure SPI input and output addresses
@@ -1158,7 +1288,7 @@ void thc_spi_input_output_address_config(struct thc_device *dev, u32 input_hdr_a
 	regmap_write(dev->thc_regmap,
 		     THC_M_PRT_WR_BULK_ADDR_OFFSET, output_addr);
 }
-EXPORT_SYMBOL_NS_GPL(thc_spi_input_output_address_config, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_spi_input_output_address_config, "INTEL_THC");
 
 static int thc_i2c_subip_pio_read(struct thc_device *dev, const u32 address,
 				  u32 *size, u32 *buffer)
@@ -1393,7 +1523,7 @@ int thc_i2c_subip_init(struct thc_device *dev, const u32 target_address,
 
 	return 0;
 }
-EXPORT_SYMBOL_NS_GPL(thc_i2c_subip_init, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_i2c_subip_init, "INTEL_THC");
 
 /**
  * thc_i2c_subip_regs_save - Save THC I2C sub-subsystem register values to THC device context
@@ -1416,7 +1546,7 @@ int thc_i2c_subip_regs_save(struct thc_device *dev)
 
 	return 0;
 }
-EXPORT_SYMBOL_NS_GPL(thc_i2c_subip_regs_save, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_i2c_subip_regs_save, "INTEL_THC");
 
 /**
  * thc_i2c_subip_regs_restore - Restore THC I2C subsystem registers from THC device context
@@ -1439,7 +1569,7 @@ int thc_i2c_subip_regs_restore(struct thc_device *dev)
 
 	return 0;
 }
-EXPORT_SYMBOL_NS_GPL(thc_i2c_subip_regs_restore, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_i2c_subip_regs_restore, "INTEL_THC");
 
 /**
  * thc_i2c_compat_config - I2C compatible configure
@@ -1466,7 +1596,7 @@ void thc_i2c_compat_config(struct thc_device *dev,
 
 	dev->i2c_compat_en = true;
 }
-EXPORT_SYMBOL_NS_GPL(thc_i2c_compat_config, INTEL_THC);
+EXPORT_SYMBOL_NS_GPL(thc_i2c_compat_config, "INTEL_THC");
 
 void thc_i2c_compat_enable(struct thc_device *dev, bool enable)
 {
@@ -1485,6 +1615,7 @@ void thc_i2c_compat_enable(struct thc_device *dev, bool enable)
 
 	regmap_write_bits(dev->thc_regmap, THC_M_PRT_SPI_ICRRD_OPCODE_OFFSET, mask, val);
 }
+EXPORT_SYMBOL_NS_GPL(thc_i2c_compat_enable, "INTEL_THC");
 
 MODULE_AUTHOR("Xinpeng Sun <xinpeng.sun@intel.com>");
 MODULE_AUTHOR("Even Xu <even.xu@intel.com>");

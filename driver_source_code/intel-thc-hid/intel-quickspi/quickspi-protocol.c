@@ -196,8 +196,13 @@ void quickspi_handle_input_data(struct quickspi_device *qsdev, u32 buf_len)
 		break;
 
 	case RESET_RESPONSE:
-		dev_dbg(qsdev->dev, "Receive DIR reset response\n");
-		/* TODO: to add device initiated reset flow */
+		if (qsdev->state == QUICKSPI_RESETING) {
+			qsdev->reset_ack = true;
+			wake_up_interruptible(&qsdev->reset_ack_wq);
+			dev_dbg(qsdev->dev, "Receive HIR reset response\n");
+		} else {
+			dev_info(qsdev->dev, "Receive DIR\n");
+		}
 		break;
 
 	case GET_FEATURE_RESPONSE:

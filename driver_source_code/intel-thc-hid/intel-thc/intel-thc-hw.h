@@ -636,6 +636,9 @@
 #define THC_M_PRT_RPRD_CNTRL_SW_THC_SWDMA_I2C_RX_DLEN_EN	BIT(23)
 #define THC_M_PRT_RPRD_CNTRL_SW_THC_SWDMA_I2C_WBC		GENMASK(31, 26)
 
+#define THC_M_PRT_PRD_EMPTY_CNT_1_RPTEC				BIT(31)
+#define THC_M_PRT_PRD_EMPTY_CNT_2_RPTEC				BIT(31)
+
 #define THC_M_PRT_SW_DMA_PRD_TABLE_LEN_THC_M_PRT_SW_DMA_PRD_TABLE_LEN	GENMASK(23, 0)
 
 #define THC_M_PRT_SPI_DUTYC_CFG_SPI_CSA_CK_DELAY_VAL		GENMASK(3, 0)
@@ -674,7 +677,7 @@
 
 /* LTR definition */
 /*
- * THC uses scale to calcualte final LTR value.
+ * THC uses scale to calculate final LTR value.
  * Scale is geometric progression of 2^5 step, starting from 2^0.
  * For example, THC_LTR_SCALE_2(2) means 2^(5 * 2) = 1024, unit is ns.
  */

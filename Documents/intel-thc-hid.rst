@@ -289,8 +289,8 @@ to system memory. After that, THC update interrupt cause register with report ty
 RxDMA PRD table read pointer, then trigger a MSI interrupt to notify driver RxDMA finishing
 data receiving.
 
-For I2C mode, THC RxDMA's behavior is little difference, because of HIDI2C protocol difference with
-HIDSPI protocol, RxDMA only be used to receive input report. The sequence is, when Touch IC
+For I2C mode, THC RxDMA's behavior is a little bit different, because of HIDI2C protocol difference
+with HIDSPI protocol, RxDMA only be used to receive input report. The sequence is, when Touch IC
 triggers a interrupt to THC, THC first reads out 2 bytes from input report address to determine the
 packet length, then use this packet length to start a DMA reading from input report address for
 input report data. After that, THC update RxDMA PRD table read pointer, then trigger a MSI interrupt

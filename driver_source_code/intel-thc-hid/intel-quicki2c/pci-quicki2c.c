@@ -128,6 +128,7 @@ static int quicki2c_get_acpi_resources(struct quicki2c_device *qcdev)
 	struct acpi_device *adev = ACPI_COMPANION(qcdev->dev);
 	struct quicki2c_subip_acpi_parameter i2c_param;
 	struct quicki2c_subip_acpi_config i2c_config;
+	u32 hid_desc_addr;
 	int ret = -EINVAL;
 
 	if (!adev) {
@@ -141,9 +142,11 @@ static int quicki2c_get_acpi_resources(struct quicki2c_device *qcdev)
 					     QUICKI2C_ACPI_REVISION_NUM,
 					     QUICKI2C_ACPI_FUNC_NUM_HID_DESC_ADDR,
 					     ACPI_TYPE_INTEGER,
-					     &qcdev->hid_desc_addr);
+					     &hid_desc_addr);
 	if (ret)
 		return ret;
+
+	qcdev->hid_desc_addr = (u16)hid_desc_addr;
 
 	ret = quicki2c_acpi_get_dsm_property(adev, &thc_platform_guid,
 					     QUICKI2C_ACPI_REVISION_NUM,
@@ -416,8 +419,6 @@ static struct quicki2c_device *quicki2c_dev_init(struct pci_dev *pdev, void __io
 	if (ret)
 		return ERR_PTR(ret);
 
-	thc_dma_unconfigure(qcdev->thc_hw);
-
 	ret = thc_port_select(qcdev->thc_hw, THC_PORT_TYPE_I2C);
 	if (ret) {
 		dev_err_once(dev, "Failed to select THC port, ret = %d.\n", ret);
@@ -516,8 +517,8 @@ static void quicki2c_dma_deinit(struct quicki2c_device *qcdev)
  * quicki2c_alloc_report_buf - Alloc report buffers
  * @qcdev: pointer to the quicki2c device structure
  *
- * Allocate report descritpor buffer, it will be used for restore TIC HID
- * report descritpor.
+ * Allocate report descriptor buffer, it will be used for restore TIC HID
+ * report descriptor.
  *
  * Allocate input report buffer, it will be used for receive HID input report
  * data from TIC.
@@ -729,7 +730,6 @@ unmap_io_region:
 	pcim_iounmap_regions(pdev, BIT(0));
 disable_pci_device:
 	pci_clear_master(pdev);
-	pci_disable_device(pdev);
 
 	return ret;
 }
@@ -762,7 +762,6 @@ static void quicki2c_remove(struct pci_dev *pdev)
 
 	pcim_iounmap_regions(pdev, BIT(0));
 	pci_clear_master(pdev);
-	pci_disable_device(pdev);
 }
 
 /**
@@ -1046,4 +1045,4 @@ MODULE_AUTHOR("Even Xu <even.xu@intel.com>");
 
 MODULE_DESCRIPTION("Intel(R) QuickI2C Driver");
 MODULE_LICENSE("GPL");
-MODULE_IMPORT_NS(INTEL_THC);
+MODULE_IMPORT_NS("INTEL_THC");

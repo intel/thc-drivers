@@ -420,8 +420,6 @@ static struct quickspi_device *quickspi_dev_init(struct pci_dev *pdev, void __io
 	if (ret)
 		return ERR_PTR(ret);
 
-	thc_dma_unconfigure(qsdev->thc_hw);
-
 	ret = thc_port_select(qsdev->thc_hw, THC_PORT_TYPE_SPI);
 	if (ret) {
 		dev_err(dev, "Failed to select THC port, ret = %d.\n", ret);
@@ -544,8 +542,8 @@ static void quickspi_dma_deinit(struct quickspi_device *qsdev)
  * quickspi_alloc_report_buf - Alloc report buffers
  * @qsdev: pointer to the quickspi device structure
  *
- * Allocate report descritpor buffer, it will be used for restore TIC HID
- * report descritpor.
+ * Allocate report descriptor buffer, it will be used for restore TIC HID
+ * report descriptor.
  *
  * Allocate input report buffer, it will be used for receive HID input report
  * data from TIC.
@@ -711,14 +709,14 @@ static int quickspi_probe(struct pci_dev *pdev,
 		disable_irq(qsdev->gpio_irq);
 	}
 
+	qsdev->state = QUICKSPI_ENABLED;
+
 	/* Enable runtime power management */
 	pm_runtime_use_autosuspend(qsdev->dev);
 	pm_runtime_set_autosuspend_delay(qsdev->dev, DEFAULT_AUTO_SUSPEND_DELAY_MS);
 	pm_runtime_mark_last_busy(qsdev->dev);
 	pm_runtime_put_noidle(qsdev->dev);
 	pm_runtime_put_autosuspend(qsdev->dev);
-
-	qsdev->state = QUICKSPI_ENABLED;
 
 	dev_dbg(&pdev->dev, "QuickSPI probe success\n");
 
@@ -732,7 +730,6 @@ unmap_io_region:
 	pcim_iounmap_regions(pdev, BIT(0));
 disable_pci_device:
 	pci_clear_master(pdev);
-	pci_disable_device(pdev);
 
 	return ret;
 }
@@ -765,7 +762,6 @@ static void quickspi_remove(struct pci_dev *pdev)
 
 	pcim_iounmap_regions(pdev, BIT(0));
 	pci_clear_master(pdev);
-	pci_disable_device(pdev);
 }
 
 /**
@@ -942,8 +938,6 @@ static int quickspi_restore(struct device *device)
 	if (ret)
 		return ret;
 
-	thc_dma_unconfigure(qsdev->thc_hw);
-
 	/* Reconfig THC HW when back from hibernate */
 	ret = thc_port_select(qsdev->thc_hw, THC_PORT_TYPE_SPI);
 	if (ret)
@@ -987,8 +981,6 @@ static int quickspi_restore(struct device *device)
 		       qsdev->low_power_ltr_val);
 
 	thc_change_ltr_mode(qsdev->thc_hw, THC_LTR_MODE_ACTIVE);
-
-	qsdev->state = QUICKSPI_ENABLED;
 
 	return 0;
 }
@@ -1069,4 +1061,4 @@ MODULE_AUTHOR("Even Xu <even.xu@intel.com>");
 
 MODULE_DESCRIPTION("Intel(R) QuickSPI Driver");
 MODULE_LICENSE("GPL");
-MODULE_IMPORT_NS(INTEL_THC);
+MODULE_IMPORT_NS("INTEL_THC");

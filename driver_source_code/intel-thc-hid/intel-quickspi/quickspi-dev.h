@@ -11,18 +11,18 @@
 
 #include "quickspi-protocol.h"
 
-#define PCI_DEVICE_ID_INTEL_THC_MTL_DEVICE_ID_SPI_PORT1	0x7E49
-#define PCI_DEVICE_ID_INTEL_THC_MTL_DEVICE_ID_SPI_PORT2	0x7E4B
-#define PCI_DEVICE_ID_INTEL_THC_LNL_DEVICE_ID_SPI_PORT1	0xA849
-#define PCI_DEVICE_ID_INTEL_THC_LNL_DEVICE_ID_SPI_PORT2	0xA84B
-#define PCI_DEVICE_ID_INTEL_THC_PTL_H_DEVICE_ID_SPI_PORT1 0xE349/* PTL-Px/H Port #1 */
-#define PCI_DEVICE_ID_INTEL_THC_PTL_H_DEVICE_ID_SPI_PORT2 0xE34B/* PTL-Px/H Port #2 */
-#define PCI_DEVICE_ID_INTEL_THC_PTL_U_DEVICE_ID_SPI_PORT1 0xE449/* PTL-U/P Port #1 */
-#define PCI_DEVICE_ID_INTEL_THC_PTL_U_DEVICE_ID_SPI_PORT2 0xE44B/* PTL-U/P Port #2 */
-#define PCI_DEVICE_ID_INTEL_THC_PTL_A_DEVICE_ID_SPI_PORT1 0x67C9/* PTL-A Port #1 */
-#define PCI_DEVICE_ID_INTEL_THC_PTL_A_DEVICE_ID_SPI_PORT2 0x67CB/* PTL-A Port #2 */
-#define PCI_DEVICE_ID_INTEL_THC_WCL_P_DEVICE_ID_SPI_PORT1 0x4D49/* WCL-P Port #1 */
-#define PCI_DEVICE_ID_INTEL_THC_WCL_P_DEVICE_ID_SPI_PORT2 0x4D4B/* WCL-P Port #2 */
+#define PCI_DEVICE_ID_INTEL_THC_MTL_DEVICE_ID_SPI_PORT1		0x7E49
+#define PCI_DEVICE_ID_INTEL_THC_MTL_DEVICE_ID_SPI_PORT2		0x7E4B
+#define PCI_DEVICE_ID_INTEL_THC_LNL_DEVICE_ID_SPI_PORT1		0xA849
+#define PCI_DEVICE_ID_INTEL_THC_LNL_DEVICE_ID_SPI_PORT2		0xA84B
+#define PCI_DEVICE_ID_INTEL_THC_PTL_H_DEVICE_ID_SPI_PORT1	0xE349
+#define PCI_DEVICE_ID_INTEL_THC_PTL_H_DEVICE_ID_SPI_PORT2	0xE34B
+#define PCI_DEVICE_ID_INTEL_THC_PTL_U_DEVICE_ID_SPI_PORT1	0xE449
+#define PCI_DEVICE_ID_INTEL_THC_PTL_U_DEVICE_ID_SPI_PORT2	0xE44B
+#define PCI_DEVICE_ID_INTEL_THC_PTL_A_DEVICE_ID_SPI_PORT1	0x67C9
+#define PCI_DEVICE_ID_INTEL_THC_PTL_A_DEVICE_ID_SPI_PORT2	0x67CB
+#define PCI_DEVICE_ID_INTEL_THC_WCL_P_DEVICE_ID_SPI_PORT1	0x4D49
+#define PCI_DEVICE_ID_INTEL_THC_WCL_P_DEVICE_ID_SPI_PORT2	0x4D4B
 
 /* HIDSPI special ACPI parameters DSM methods */
 #define ACPI_QUICKSPI_REVISION_NUM			2
@@ -116,7 +116,7 @@ struct acpi_device;
  * @reset_ack: indicate reset response received or not
  * @nondma_int_received_wq: workqueue for waiting THC non-DMA interrupt
  * @nondma_int_received: indicate THC non-DMA interrupt received or not
- * @report_desc_got_wq: workqueue for waiting device report descritpor
+ * @report_desc_got_wq: workqueue for waiting device report descriptor
  * @report_desc_got: indicate device report descritor received or not
  * @set_power_on_wq: workqueue for waiting set power on response from device
  * @set_power_on: indicate set power on response received or not
