@@ -19,10 +19,6 @@
 #define PCI_DEVICE_ID_INTEL_THC_PTL_H_DEVICE_ID_SPI_PORT2	0xE34B
 #define PCI_DEVICE_ID_INTEL_THC_PTL_U_DEVICE_ID_SPI_PORT1	0xE449
 #define PCI_DEVICE_ID_INTEL_THC_PTL_U_DEVICE_ID_SPI_PORT2	0xE44B
-#define PCI_DEVICE_ID_INTEL_THC_PTL_A_DEVICE_ID_SPI_PORT1	0x67C9
-#define PCI_DEVICE_ID_INTEL_THC_PTL_A_DEVICE_ID_SPI_PORT2	0x67CB
-#define PCI_DEVICE_ID_INTEL_THC_WCL_P_DEVICE_ID_SPI_PORT1	0x4D49
-#define PCI_DEVICE_ID_INTEL_THC_WCL_P_DEVICE_ID_SPI_PORT2	0x4D4B
 
 /* HIDSPI special ACPI parameters DSM methods */
 #define ACPI_QUICKSPI_REVISION_NUM			2
@@ -61,9 +57,9 @@
 
 enum quickspi_dev_state {
 	QUICKSPI_NONE,
+	QUICKSPI_INITIATED,
 	QUICKSPI_RESETING,
-	QUICKSPI_RESETED,
-	QUICKSPI_INITED,
+	QUICKSPI_RESET,
 	QUICKSPI_ENABLED,
 	QUICKSPI_DISABLED,
 };
@@ -124,8 +120,6 @@ struct acpi_device;
  * @get_feature_cmpl: indicate get feature received or not
  * @set_feature_cmpl_wq: workqueue for waiting set feature to device
  * @set_feature_cmpl: indicate set feature send complete or not
- * @gpio_irq : gpio interrupt irq number for wake on touch
- * @gpio_irq_wakeable : indicate wake gpio workable or not
  */
 struct quickspi_device {
 	struct device *dev;
@@ -173,9 +167,6 @@ struct quickspi_device {
 
 	wait_queue_head_t set_report_cmpl_wq;
 	bool set_report_cmpl;
-
-	int gpio_irq;
-	bool gpio_irq_wakeable;
 };
 
 #endif /* _QUICKSPI_DEV_H_ */
