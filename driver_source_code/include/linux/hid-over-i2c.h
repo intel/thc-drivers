@@ -44,10 +44,10 @@ struct hidi2c_report_packet {
 	u8 data[];
 } __packed;
 
-#define HIDI2C_LENGTH_LEN	sizeof(u16)
+#define HIDI2C_LENGTH_LEN	sizeof(__le16)
 
-#define HIDI2C_PACKET_LEN(data_len)	(data_len + HIDI2C_LENGTH_LEN)
-#define HIDI2C_DATA_LEN(pkt_len)	(pkt_len - HIDI2C_LENGTH_LEN)
+#define HIDI2C_PACKET_LEN(data_len)	((data_len) + HIDI2C_LENGTH_LEN)
+#define HIDI2C_DATA_LEN(pkt_len)	((pkt_len) - HIDI2C_LENGTH_LEN)
 
 #define HIDI2C_CMD_MAX_RI	0x0F
 

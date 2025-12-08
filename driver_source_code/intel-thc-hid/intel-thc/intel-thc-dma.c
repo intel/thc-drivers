@@ -568,6 +568,11 @@ static int read_dma_buffer(struct thc_device *dev,
 	size_t mes_len, ret;
 	u8 nent;
 
+	if (!read_config->prd_tbls || !read_config->sgls[prd_table_index]) {
+		dev_err_once(dev->dev, "PRD table isn't avaliable\n");
+		return -EINVAL;
+	}
+
 	if (prd_table_index >= read_config->prd_tbl_num) {
 		dev_err_once(dev->dev, "PRD table index %d too big\n", prd_table_index);
 		return -EINVAL;

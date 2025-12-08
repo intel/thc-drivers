@@ -1,0 +1,60 @@
+From 7d4e2c81d0505a6b69bbae16910dc95170ccef07 Mon Sep 17 00:00:00 2001
+From: Even Xu <even.xu@intel.com>
+Date: Tue, 29 Apr 2025 13:02:36 +0800
+Subject: [PATCH v1 3/4] HID: Intel-thc-hid: Intel-quicki2c: Support writing
+ output report format
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+There are two output formats requested in the HID-over-I2C specification:
+- Command format (set feature/set report): encoded command written to
+  command register, followed by data written to data register
+- Output report format: all data written directly to output register
+
+Current quicki2c_init_write_buf() implementation only supports the
+command format.
+
+Extend quicki2c_init_write_buf() to automatically detect the output
+format based on the presence of command parameters and prepare the
+appropriate output buffer accordingly.
+
+Tested-by: Rui Zhang <rui1.zhang@intel.com>
+Signed-off-by: Even Xu <even.xu@intel.com>
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+---
+ .../intel-quicki2c/quicki2c-protocol.c          | 17 +++++++++++------
+ 1 file changed, 11 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/hid/intel-thc-hid/intel-quicki2c/quicki2c-protocol.c b/drivers/hid/intel-thc-hid/intel-quicki2c/quicki2c-protocol.c
+index ab390ce79c21..a287d9ee09c3 100644
+--- a/drivers/hid/intel-thc-hid/intel-quicki2c/quicki2c-protocol.c
++++ b/drivers/hid/intel-thc-hid/intel-quicki2c/quicki2c-protocol.c
+@@ -30,13 +30,18 @@ static ssize_t quicki2c_init_write_buf(struct quicki2c_device *qcdev, u32 cmd, s
+ 	if (buf_len > write_buf_len)
+ 		return -EINVAL;
+ 
+-	memcpy(write_buf, &qcdev->dev_desc.cmd_reg, HIDI2C_REG_LEN);
+-	offset += HIDI2C_REG_LEN;
+-	memcpy(write_buf + offset, &cmd, cmd_len);
+-	offset += cmd_len;
++	if (cmd_len) {
++		memcpy(write_buf, &qcdev->dev_desc.cmd_reg, HIDI2C_REG_LEN);
++		offset += HIDI2C_REG_LEN;
++		memcpy(write_buf + offset, &cmd, cmd_len);
++		offset += cmd_len;
+ 
+-	if (append_data_reg) {
+-		memcpy(write_buf + offset, &qcdev->dev_desc.data_reg, HIDI2C_REG_LEN);
++		if (append_data_reg) {
++			memcpy(write_buf + offset, &qcdev->dev_desc.data_reg, HIDI2C_REG_LEN);
++			offset += HIDI2C_REG_LEN;
++		}
++	} else {
++		memcpy(write_buf, &qcdev->dev_desc.output_reg, HIDI2C_REG_LEN);
+ 		offset += HIDI2C_REG_LEN;
+ 	}
+ 
+-- 
+2.40.1
+

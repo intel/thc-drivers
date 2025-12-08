@@ -1,0 +1,41 @@
+From 1b61cbe5f6780a0a9957be119804c8cf60aa34f6 Mon Sep 17 00:00:00 2001
+From: Even Xu <even.xu@intel.com>
+Date: Mon, 1 Dec 2025 15:09:00 +0800
+Subject: [PATCH v1 0/4] Add output report support for QuickI2C driver
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This patch serial adds support for HID output reports in the Quicki2c
+driver by implementing the output_report callback in the HID low-level
+driver interface.
+
+This change introduces:
+- Refine QuickI2C driver to use size_t for all length-related variables
+- Enhance the quicki2c_init_write_buf() function by adding support for
+  writing to the output register based on the content being written
+- Add quicki2c_hid_output_report() and quicki2c_output_report() function
+  that processe the HID output reports request
+
+This enables proper communication with HID devices that require output
+report functionality, such as setting device configuration or updating
+device firmware.
+
+Even Xu (4):
+  HID: Intel-thc-hid: Intel-quicki2c: Use size_t for all length
+    variables
+  HID: Intel-thc-hid: Intel-quicki2c: Use put_unaligned_le16 for __le16
+    writes
+  HID: Intel-thc-hid: Intel-quicki2c: Support writing output report
+    format
+  HID: Intel-thc-hid: Intel-quicki2c: Add output report support
+
+ .../intel-quicki2c/quicki2c-dev.h             |  2 +-
+ .../intel-quicki2c/quicki2c-hid.c             |  8 ++
+ .../intel-quicki2c/quicki2c-protocol.c        | 95 +++++++++++--------
+ .../intel-quicki2c/quicki2c-protocol.h        |  5 +-
+ 4 files changed, 68 insertions(+), 42 deletions(-)
+
+-- 
+2.40.1
+

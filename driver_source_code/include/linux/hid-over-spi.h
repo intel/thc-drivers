@@ -88,7 +88,7 @@ struct input_report_body {
 	u8 content[];
 } __packed;
 
-#define HIDSPI_INPUT_BODY_SIZE(content_len)	(content_len + HIDSPI_INPUT_BODY_HEADER_SIZE)
+#define HIDSPI_INPUT_BODY_SIZE(content_len)	((content_len) + HIDSPI_INPUT_BODY_HEADER_SIZE)
 
 /**
  * struct output_report_header - Output report header definition in HIDSPI protocol
@@ -116,7 +116,7 @@ struct output_report {
 	u8 content[];
 } __packed;
 
-#define HIDSPI_OUTPUT_REPORT_SIZE(content_len)	(content_len + HIDSPI_OUTPUT_REPORT_HEADER_SIZE)
+#define HIDSPI_OUTPUT_REPORT_SIZE(content_len)	((content_len) + HIDSPI_OUTPUT_REPORT_HEADER_SIZE)
 
 /**
  * struct hidspi_dev_descriptor - HIDSPI device descriptor definition
